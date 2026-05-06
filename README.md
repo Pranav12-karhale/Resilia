@@ -14,7 +14,7 @@ An AI-powered dynamic supply chain management application designed to map out, a
 - **Backend Communication:** Standard `http` package, directly integrating with Firebase Auth & the custom Express/Genkit API.
 
 ### **Backend (Microservices & AI)**
-- **Runtime:** Node.js (TypeScript) deployed via Firebase Cloud Functions.
+- **Runtime:** Node.js (TypeScript) deployed via Render.
 - **Framework:** Express.js 
 - **AI / Generative Model Orchestration:** Google Genkit (`@genkit-ai/google-genai`) to interface with Gemini models (3.1 Pro / 1.5 Flash).
 - **Validation:** Zod for robust AI output parsing and schema enforcement.
@@ -22,7 +22,7 @@ An AI-powered dynamic supply chain management application designed to map out, a
 ### **Cloud & Infrastructure (Google Cloud / Firebase)**
 - **Authentication:** Firebase Authentication (Google Sign-In & Email/Password).
 - **Database:** Cloud Firestore (NoSQL) for storing generated supply chains, risk reports, and user data.
-- **Hosting / Deployment:** Firebase Hosting (for web) and Firebase Functions (for backend Express API).
+- **Hosting / Deployment:** Firebase Hosting (for web) and Render (for backend Express API).
 
 ---
 
@@ -49,10 +49,10 @@ The platform follows a decoupled, serverless client-server architecture:
 
 ## 🚀 Deployment Guide (GitHub to Firebase)
 
-This project is architected to be deployed entirely on the **Google Cloud / Firebase Free Tier (Spark Plan) / Google Cloud for Students**.
+This project is architected to be deployed entirely on the **Firebase Free Tier (Spark Plan) and Render**.
 
 ### **Prerequisites**
-1. A Google Cloud / Firebase Project.
+1. Firebase Project.
 2. Firebase CLI installed (`npm install -g firebase-tools`).
 3. Flutter SDK installed.
 4. Node.js (v18+) installed.
