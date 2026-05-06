@@ -19,7 +19,7 @@ An AI-powered dynamic supply chain management application designed to map out, a
 - **AI / Generative Model Orchestration:** Google Genkit (`@genkit-ai/google-genai`) to interface with Gemini models (3.1 Pro / 1.5 Flash).
 - **Validation:** Zod for robust AI output parsing and schema enforcement.
 
-### **Cloud & Infrastructure (Google Cloud / Firebase)**
+### **Infrastructure (Firebase)**
 - **Authentication:** Firebase Authentication (Google Sign-In & Email/Password).
 - **Database:** Cloud Firestore (NoSQL) for storing generated supply chains, risk reports, and user data.
 - **Hosting / Deployment:** Firebase Hosting (for web) and Render (for backend Express API).
