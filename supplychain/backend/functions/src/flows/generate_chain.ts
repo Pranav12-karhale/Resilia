@@ -1,158 +1,62 @@
-import { genkit, z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { StateGraph, END, START, Annotation } from "@langchain/langgraph";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import {
   SupplyChainSchema,
   BusinessAnalysisSchema,
   SupplyChainNodeSchema,
   EdgeSchema,
   NodeUIConfigSchema,
-  PageComponentSchema,
   NodeType,
   AnticipatedRiskSchema,
   type SupplyChain,
   type BusinessAnalysis,
+  type AnticipatedRisk,
 } from '../schemas/supply_chain_schema.js';
 import { v4 as uuidv4 } from 'uuid';
-import { DISRUPTION_PLAYBOOK } from './disruption_playbook.js';
+import { z } from "zod";
+import { getVectorStore } from "../utils/vector_store.js";
 
-// ============================================================
-// Initialize Genkit with Google AI (Gemini)
-// ============================================================
-
-const ai = genkit({
-  plugins: [googleAI()],
+// Initialize the LLM
+// We use structured output for each node.
+const llm = new ChatGoogleGenerativeAI({
+  modelName: "gemini-2.5-flash",
+  temperature: 0.2,
 });
 
-const PRIORITIZED_MODELS = [
-  'googleai/gemini-3.1-pro',
-  'googleai/gemini-2.5-flash',
-  'googleai/gemini-2.5-flash-lite',
-  'googleai/gemini-2.0-flash-lite',
-  'googleai/gemini-1.5-flash',
-];
-
-// Hard timeout (seconds) for the entire fallback loop
-const OVERALL_TIMEOUT_MS = 60_000;
-// Max delay we'll ever wait for a single retry
-const MAX_RETRY_DELAY_MS = 5_000;
-
-let _aiInstances: any[] | null = null;
-function getAiInstances() {
-  if (_aiInstances) return _aiInstances;
+// ============================================================
+// LangGraph State Definition
+// ============================================================
+const GraphState = Annotation.Root({
+  businessIdea: Annotation<string>,
+  clientLocation: Annotation<{ lat: number; lng: number; address: string } | undefined>,
+  strictLocal: Annotation<boolean | undefined>,
+  destination: Annotation<string | undefined>,
+  chainScope: Annotation<string | undefined>,
+  displayStrategy: Annotation<string | undefined>,
   
-  _aiInstances = [
-    process.env.GOOGLE_GENAI_API_KEY ? genkit({ plugins: [googleAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY })] }) : null,
-    process.env.GOOGLE_GENAI_API_KEY_BACKUP ? genkit({ plugins: [googleAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY_BACKUP })] }) : null,
-  ].filter(Boolean);
-  
-  if (_aiInstances.length === 0) {
-    console.warn("⚠️ WARNING: getAiInstances found 0 valid API keys in environment variables!");
-  }
-  
-  return _aiInstances;
-}
-
-/**
- * Helper to attempt generation with multiple models in order of priority.
- * Designed to fail fast: caps delays, skips rate-limited models immediately
- * (quota is project-wide, so waiting won't help), and enforces a hard timeout.
- */
-async function generateWithFallback<T extends z.ZodTypeAny>(options: {
-  prompt: string;
-  outputSchema: T;
-}) {
-  let lastError: any;
-  const deadline = Date.now() + OVERALL_TIMEOUT_MS;
-
-  for (const model of PRIORITIZED_MODELS) {
-    if (Date.now() >= deadline) {
-      console.warn(`   ⏰ Overall timeout reached (${OVERALL_TIMEOUT_MS / 1000}s). Giving up on AI.`);
-      break;
-    }
-
-    const aiInstances = getAiInstances();
-    for (let keyIdx = 0; keyIdx < aiInstances.length; keyIdx++) {
-      const currentAi = aiInstances[keyIdx];
-
-      for (let attempt = 0; attempt < 2; attempt++) {
-        if (Date.now() >= deadline) break;
-
-        try {
-          console.log(`   📡 Trying model: ${model} with key ${keyIdx + 1}${attempt > 0 ? ` (retry ${attempt})` : ''}...`);
-          const { output } = await currentAi.generate({
-            model,
-            prompt: options.prompt,
-            output: { schema: options.outputSchema },
-            config: {},
-          });
-
-          if (output) {
-            console.log(`   ✅ Success with: ${model} (key ${keyIdx + 1})`);
-            return output;
-          }
-        } catch (error: any) {
-          lastError = error;
-          const msg = error.message || String(error);
-          console.warn(`   ⚠️ ${model} (key ${keyIdx + 1}) failed: ${msg.substring(0, 120)}...`);
-
-          if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
-            if (keyIdx < aiInstances.length - 1) {
-              console.log(`   🔄 Rate limited. Switching to next API key immediately...`);
-              break; // Move to next key
-            } else {
-              console.log(`   ⏭️ All keys exhausted for ${model}. Falling back to next model...`);
-              keyIdx = aiInstances.length; // break key loop
-              break; // Try next model
-            }
-          }
-
-          if (msg.includes('503')) {
-            const delayMs = Math.min(MAX_RETRY_DELAY_MS, 3000);
-            console.log(`   ⏳ Server overloaded, waiting ${delayMs}ms then trying next...`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-            break; // Try next key
-          }
-
-          // Any other error (404 model not found, etc.) — skip immediately
-          console.log(`   ⏭️ Non-retryable error, trying next model...`);
-          keyIdx = aiInstances.length; // force key loop to end
-          break; // break attempt loop
-        }
-      }
-    }
-  }
-
-  throw new Error(`All models failed. Last error: ${lastError?.message || lastError}`);
-}
+  analysis: Annotation<BusinessAnalysis>,
+  anticipatedRisks: Annotation<AnticipatedRisk[]>,
+  architecture: Annotation<{
+    nodes: any[];
+    edges: any[];
+  }>,
+  uiConfigs: Annotation<Record<string, any>>,
+  supplyChain: Annotation<SupplyChain>,
+});
 
 // ============================================================
 // Agent 1: Business Analyzer
-// Breaks down the business idea into structured components
 // ============================================================
+async function analyzeBusiness(state: typeof GraphState.State) {
+  const structuredLlm = llm.withStructuredOutput(BusinessAnalysisSchema);
+  
+  const locationContext = state.clientLocation
+    ? `\nClient Location: ${state.clientLocation.address} (Lat: ${state.clientLocation.lat}, Lng: ${state.clientLocation.lng})\nStrict Local Sourcing: ${state.strictLocal ? 'YES - This must be a hyper-local business.' : 'No'}`
+    : '';
 
-const analyzeBusinessFlow = ai.defineFlow(
-  {
-    name: 'analyzeBusiness',
-    inputSchema: z.object({ 
-      businessIdea: z.string(),
-      clientLocation: z.object({
-        lat: z.number(),
-        lng: z.number(),
-        address: z.string(),
-      }).optional(),
-      strictLocal: z.boolean().optional(),
-    }),
-    outputSchema: BusinessAnalysisSchema,
-  },
-  async (input) => {
-    const locationContext = input.clientLocation
-      ? `\nClient Location: ${input.clientLocation.address} (Lat: ${input.clientLocation.lat}, Lng: ${input.clientLocation.lng})\nStrict Local Sourcing: ${input.strictLocal ? 'YES - This must be a hyper-local business.' : 'No'}`
-      : '';
+  const prompt = `You are a supply chain expert and business analyst. Analyze the following business idea and break it down into its logistical components.
 
-    return await generateWithFallback({
-      prompt: `You are a supply chain expert and business analyst. Analyze the following business idea and break it down into its logistical components.
-
-Business Idea: "${input.businessIdea}"${locationContext}
+Business Idea: "${state.businessIdea}"${locationContext}
 
 Identify:
 1. The primary industry this business operates in
@@ -164,324 +68,216 @@ Identify:
 7. The overall complexity of the supply chain
 8. Any special considerations (cold chain, hazardous materials, perishables, etc.)
 
-Be specific and practical. Think about real-world logistics.`,
-      outputSchema: BusinessAnalysisSchema,
-    });
-  }
-);
+Be specific and practical. Think about real-world logistics.`;
+
+  console.log(`   🧠 Analyzing business: ${state.businessIdea}...`);
+  const analysis = await structuredLlm.invoke(prompt);
+  
+  return { analysis };
+}
 
 // ============================================================
-// Agent 1.5: Risk Anticipator
-// Anticipates risks before generating the chain
+// Agent 1.5: Risk Anticipator (Using RAG)
 // ============================================================
+async function anticipateRisks(state: typeof GraphState.State) {
+  console.log(`   🔮 Anticipating risks via RAG...`);
+  const locationContext = state.clientLocation
+    ? `\nClient Location: ${state.clientLocation.address} (Lat: ${state.clientLocation.lat}, Lng: ${state.clientLocation.lng})`
+    : '';
 
-const anticipateRisksFlow = ai.defineFlow(
-  {
-    name: 'anticipateRisks',
-    inputSchema: z.object({
-      businessIdea: z.string(),
-      analysis: BusinessAnalysisSchema,
-      clientLocation: z.object({
-        lat: z.number(),
-        lng: z.number(),
-        address: z.string(),
-      }).optional(),
-    }),
-    outputSchema: z.object({
-      anticipated_risks: z.array(AnticipatedRiskSchema),
-    }),
-  },
-  async (input) => {
-    const locationContext = input.clientLocation
-      ? `\nClient Location: ${input.clientLocation.address} (Lat: ${input.clientLocation.lat}, Lng: ${input.clientLocation.lng})`
-      : '';
+  // 1. Retrieve relevant playbook items using RAG
+  const vectorStore = await getVectorStore();
+  const query = `Risks for ${state.analysis.industry} industry, producing ${state.analysis.product_type}. ${state.businessIdea}`;
+  const docs = await vectorStore.similaritySearch(query, 3);
+  
+  const retrievedContext = docs.map(d => d.pageContent).join("\n\n");
 
-    return await generateWithFallback({
-      prompt: `You are a predictive supply chain risk analyst. Based on the following business analysis, anticipate major supply chain risks from our playbook BEFORE the supply chain is even built.
+  // 2. Generate anticipated risks based on retrieved context
+  const outputSchema = z.object({ anticipated_risks: z.array(AnticipatedRiskSchema) });
+  const structuredLlm = llm.withStructuredOutput(outputSchema);
 
-Business Idea: "${input.businessIdea}"${locationContext}
+  const prompt = `You are a predictive supply chain risk analyst. Based on the following business analysis and retrieved playbook guidelines, anticipate major supply chain risks BEFORE the supply chain is even built.
+
+Business Idea: "${state.businessIdea}"${locationContext}
 
 Analysis:
-- Industry: ${input.analysis.industry}
-- Product Type: ${input.analysis.product_type}
-- Target Market: ${input.analysis.target_market}
+- Industry: ${state.analysis.industry}
+- Product Type: ${state.analysis.product_type}
+- Target Market: ${state.analysis.target_market}
 
-Playbook Categories to consider:
-${DISRUPTION_PLAYBOOK}
+Relevant Playbook Guidelines (RAG Context):
+${retrievedContext}
 
-Identify the top 1-3 macro risks (e.g., geopolitical conflicts, major climate zones to avoid, chronic transport bottlenecks).
-Provide specific "regions_to_avoid" (e.g., "Red Sea", "Taiwan", "Eastern Europe") and a "recommended_routing_strategy".
-If the business is strictly local or hyper-simple, you may return an empty list or minimal risks.`,
-      outputSchema: z.object({ anticipated_risks: z.array(AnticipatedRiskSchema) }),
-    });
-  }
-);
+Identify the top 1-3 macro risks based specifically on the playbook guidelines above.
+Provide specific "regions_to_avoid" and a "recommended_routing_strategy".
+If the business is strictly local or hyper-simple, you may return an empty list or minimal risks.`;
+
+  const result = await structuredLlm.invoke(prompt);
+  return { anticipatedRisks: result.anticipated_risks };
+}
 
 // ============================================================
 // Agent 2: Chain Architect
-// Designs the node graph with proper relationships
 // ============================================================
+async function architectChain(state: typeof GraphState.State) {
+  console.log(`   🏗️ Architecting chain nodes and edges...`);
+  const outputSchema = z.object({
+    nodes: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      type: NodeType,
+      description: z.string(),
+      order: z.number(),
+      metadata: z.record(z.any()),
+    })),
+    edges: z.array(z.object({
+      id: z.string(),
+      source_node_id: z.string(),
+      target_node_id: z.string(),
+      relationship: z.string(),
+      metadata: z.record(z.any()),
+    })),
+  });
 
-const architectChainFlow = ai.defineFlow(
-  {
-    name: 'architectChain',
-    inputSchema: z.object({
-      businessIdea: z.string(),
-      analysis: BusinessAnalysisSchema,
-      anticipatedRisks: z.array(AnticipatedRiskSchema).optional(),
-      clientLocation: z.object({
-        lat: z.number(),
-        lng: z.number(),
-        address: z.string(),
-      }).optional(),
-      strictLocal: z.boolean().optional(),
-    }),
-    outputSchema: z.object({
-      nodes: z.array(z.object({
-        id: z.string(),
-        name: z.string(),
-        type: NodeType,
-        description: z.string(),
-        order: z.number(),
-        metadata: z.record(z.any()),
-      })),
-      edges: z.array(z.object({
-        id: z.string(),
-        source_node_id: z.string(),
-        target_node_id: z.string(),
-        relationship: z.string(),
-        metadata: z.record(z.any()),
-      })),
-    }),
-  },
-  async (input) => {
-    const outputSchema = z.object({
-      nodes: z.array(z.object({
-        id: z.string(),
-        name: z.string(),
-        type: NodeType,
-        description: z.string(),
-        order: z.number(),
-        metadata: z.record(z.any()),
-      })),
-      edges: z.array(z.object({
-        id: z.string(),
-        source_node_id: z.string(),
-        target_node_id: z.string(),
-        relationship: z.string(),
-        metadata: z.record(z.any()),
-      })),
-    });
+  const structuredLlm = llm.withStructuredOutput(outputSchema);
 
-    const locationContext = input.clientLocation
-      ? `\nClient Location: ${input.clientLocation.address} (Lat: ${input.clientLocation.lat}, Lng: ${input.clientLocation.lng})\nStrict Local Sourcing: ${input.strictLocal ? 'YES - MUST use businesses very close to these coordinates' : 'Preferred'}`
-      : '';
+  const locationContext = state.clientLocation
+    ? `\nClient Location: ${state.clientLocation.address} (Lat: ${state.clientLocation.lat}, Lng: ${state.clientLocation.lng})\nStrict Local Sourcing: ${state.strictLocal ? 'YES - MUST use businesses very close to these coordinates' : 'Preferred'}`
+    : '';
 
-    const risksContext = (input.anticipatedRisks && input.anticipatedRisks.length > 0)
-      ? `\n\nANTICIPATED RISKS TO AVOID:\n${input.anticipatedRisks.map(r => `- ${r.risk_category}: ${r.description}\n  Must Avoid: ${r.regions_to_avoid.join(', ')}\n  Strategy: ${r.recommended_routing_strategy}`).join('\n')}\n\nCRITICAL ROUTING INSTRUCTION: You MUST actively avoid the 'Must Avoid' regions mentioned above and follow the 'Strategy' when placing nodes.`
-      : '';
+  const risksContext = (state.anticipatedRisks && state.anticipatedRisks.length > 0)
+    ? `\n\nANTICIPATED RISKS TO AVOID:\n${state.anticipatedRisks.map(r => `- ${r.risk_category}: ${r.description}\n  Must Avoid: ${r.regions_to_avoid.join(', ')}\n  Strategy: ${r.recommended_routing_strategy}`).join('\n')}\n\nCRITICAL ROUTING INSTRUCTION: You MUST actively avoid the 'Must Avoid' regions mentioned above and follow the 'Strategy' when placing nodes.`
+    : '';
 
-    return await generateWithFallback({
-      prompt: `You are a supply chain architect. Based on the following business analysis, design a complete supply chain node graph.
+  const prompt = `You are a supply chain architect. Based on the following business analysis, design a complete supply chain node graph.
 
-Business Idea: "${input.businessIdea}"${locationContext}${risksContext}
+Business Idea: "${state.businessIdea}"${locationContext}${risksContext}
 
 Analysis:
-- Industry: ${input.analysis.industry}
-- Product Type: ${input.analysis.product_type}
-- Target Market: ${input.analysis.target_market}
-- Key Requirements: ${input.analysis.key_requirements.join(', ')}
-- Compliance Needs: ${input.analysis.compliance_needs.join(', ')}
-- Suggested Node Types: ${input.analysis.estimated_node_types.join(', ')}
-- Complexity: ${input.analysis.complexity}
-- Special Considerations: ${input.analysis.special_considerations.join(', ')}
+- Industry: ${state.analysis.industry}
+- Product Type: ${state.analysis.product_type}
+- Key Requirements: ${state.analysis.key_requirements.join(', ')}
+- Suggested Node Types: ${state.analysis.estimated_node_types.join(', ')}
 
 Design the supply chain with:
 1. Specific, named nodes with realistic geographic locations. 
-   - CRITICAL REQUIREMENT: You MUST use FACTUAL, ACTUALLY EXISTING businesses (real factories, real warehouses, real shops, real distributors) whenever possible. Do NOT invent names like "Acme Warehouse". 
-   - If the business idea mentions a specific city or region, OR if a Client Location is provided above, you MUST find real businesses operating near that specific location.
-   - If Strict Local Sourcing is YES, you MUST anchor the primary operations (manufacturing, warehousing, fulfillment) as close to the Client Location's latitude/longitude as possible.
-   - If no location context is provided at all, use real-world industry hubs (e.g., TSMC in Taiwan for chips, Port of Long Beach, etc.).
+   - CRITICAL REQUIREMENT: You MUST use FACTUAL, ACTUALLY EXISTING businesses whenever possible.
 2. Proper ordering from raw materials to end consumer.
 3. Logical edges connecting nodes with appropriate relationships.
-4. Realistic metadata for each node, INCLUDING precise real-world geographic coordinates (latitude/longitude) for these actual businesses.
-5. Include quality control, customs, or compliance nodes where the analysis requires them.
-6. Use sequential node IDs like "node_1", "node_2", etc.
-7. Use sequential edge IDs like "edge_1", "edge_2", etc.
+4. Realistic metadata for each node, INCLUDING precise real-world geographic coordinates (lat/lng).
+5. Use sequential node IDs like "node_1", "node_2", etc.
+6. Use sequential edge IDs like "edge_1", "edge_2", etc.`;
 
-Create an appropriate number of nodes depending on complexity. 
-CRITICAL RULES FOR LOCALIZATION:
-- If Strict Local Sourcing is YES, you MUST build a HYPER-LOCAL supply chain. EVERY single node (raw materials, manufacturing, warehousing, distribution) MUST be located within a 100-mile radius of the Client Location. DO NOT include international or cross-border nodes under any circumstances.
-- If Strict Local is NO but a local business is specified, keep the supply chain localized where possible but use global hubs if necessary.
-- Be strictly factual and practical.`,
-      outputSchema,
-    });
-  }
-);
+  const architecture = await structuredLlm.invoke(prompt);
+  return { architecture };
+}
 
 // ============================================================
-// Agent 3: UI Config Generator (BATCHED)
-// Assigns page_components to each node based on its type in a single request
+// Agent 3: UI Config Generator
 // ============================================================
+async function generateUIConfigs(state: typeof GraphState.State) {
+  console.log(`   🎨 Generating UI configurations for ${state.architecture.nodes.length} nodes...`);
+  const outputSchema = z.object({
+    configs: z.record(z.string(), NodeUIConfigSchema),
+  });
 
-const batchGenerateUIConfigFlow = ai.defineFlow(
-  {
-    name: 'batchGenerateUIConfig',
-    inputSchema: z.object({
-      nodes: z.array(z.object({
-        id: z.string(),
-        name: z.string(),
-        type: NodeType,
-        description: z.string(),
-        metadata: z.record(z.any()),
-      })),
-      analysis: BusinessAnalysisSchema,
-    }),
-    outputSchema: z.object({
-      configs: z.record(z.string(), NodeUIConfigSchema),
-    }),
-  },
-  async (input) => {
-    const nodesContext = input.nodes.map(n => `- Node ID: [${n.id}]\n  Name: "${n.name}" (Type: ${n.type})\n  Description: ${n.description}`).join('\n\n');
+  const structuredLlm = llm.withStructuredOutput(outputSchema);
 
-    return await generateWithFallback({
-      prompt: `You are a UI/UX expert for supply chain management. Generate the UI configuration for a supply chain node page.
-You are receiving a list of ${input.nodes.length} nodes. You MUST generate a completely unique, highly specific UI configuration for EVERY SINGLE node in this list. Do not skip any node.
+  const nodesContext = state.architecture.nodes.map(n => `- Node ID: [${n.id}]\n  Name: "${n.name}" (Type: ${n.type})\n  Description: ${n.description}`).join('\n\n');
 
-Industry: ${input.analysis.industry}
-Compliance Needs: ${input.analysis.compliance_needs.join(', ')}
+  const prompt = `You are a UI/UX expert for supply chain management. Generate the UI configuration for a supply chain node page.
+You are receiving a list of ${state.architecture.nodes.length} nodes. You MUST generate a completely unique, highly specific UI configuration for EVERY SINGLE node in this list. Do not skip any node.
 
-Here are the ${input.nodes.length} nodes you need to configure:
+Industry: ${state.analysis.industry}
+
+Here are the ${state.architecture.nodes.length} nodes you need to configure:
 ${nodesContext}
 
 Available component types:
-- "kpi_card_row": Row of metric cards. Args: { cards: [{ label, unit, dataKey }] }
-- "inventory_table": Sortable data grid. Args: { columns: string[], dataSource: string, sortable: boolean, filterable: boolean }
-- "status_tracker": Pipeline/stage tracker. Args: { stages: string[], dataKey: string }
-- "analytics_chart": Charts. Args: { chartType: "line"|"bar"|"pie", title: string, xAxis: string, yAxis: string, dataSource: string }
-- "approval_form": Action form. Args: { fields: [{ name, type, label, required }], actions: [{ label, action, variant }] }
-- "order_list": Order management. Args: { columns: string[], statusFilters: string[], dataSource: string }
-- "data_grid": Generic table. Args: { columns: string[], dataSource: string, editable: boolean }
-- "timeline": Event timeline. Args: { dataSource: string, showDate: boolean }
-- "notification_feed": Alerts. Args: { categories: string[], dataSource: string }
-- "map_view": Map display. Args: { origin: { lat: number, lng: number }, destination: { lat: number, lng: number }, showRoute: boolean }
-- "document_upload": File upload. Args: { acceptedTypes: string[], maxSizeMB: number, label: string }
-- "qr_scanner": QR scanner. Args: { outputField: string, label: string }
+- "kpi_card_row", "inventory_table", "status_tracker", "analytics_chart", "approval_form", "order_list", "data_grid", "timeline", "notification_feed", "map_view", "document_upload", "qr_scanner"
 
 For EVERY node ID, provide its configuration in the output dictionary.
-For each configuration:
-1. Choose an appropriate Material icon name for this node type.
+1. Choose an appropriate Material icon name.
 2. Choose an appropriate hex color.
-3. Select 3-6 components that are most relevant for managing this specific node type in this industry.
-4. Configure each component's args with realistic, specific values for this node.
-CRITICAL: If you select "map_view", you must populate the "origin" coordinates using this node's geographic coordinates from the metadata, and "destination" connecting to the next logical location. If you drop the args it will crash.`,
-      outputSchema: z.object({
-        configs: z.record(z.string(), NodeUIConfigSchema),
-      }),
-    });
-  }
-);
+3. Select 3-6 components relevant for managing this specific node type.`;
+
+  const response = await structuredLlm.invoke(prompt);
+  return { uiConfigs: response.configs };
+}
 
 // ============================================================
-// Main Orchestrator Flow
-// Chains Agent 1 → Agent 2 → Agent 3 for each node
+// Agent 4: Assembler
 // ============================================================
+async function assembleChain(state: typeof GraphState.State) {
+  console.log(`   ✅ Assembling complete supply chain...`);
+  const { architecture, uiConfigs, analysis, businessIdea } = state;
 
-export const generateSupplyChainFlow = ai.defineFlow(
-  {
-    name: 'generateSupplyChain',
-    inputSchema: z.object({ 
-      businessIdea: z.string(),
-      clientLocation: z.object({
-        lat: z.number(),
-        lng: z.number(),
-        address: z.string(),
-      }).optional(),
-      strictLocal: z.boolean().optional(),
-      destination: z.string().optional(),
-      chainScope: z.string().optional(),
-      displayStrategy: z.string().optional(),
-    }),
-    outputSchema: SupplyChainSchema,
-  },
-  async (input) => {
-    // Step 1: Analyze the business idea
-    const analysis = await analyzeBusinessFlow({
-      businessIdea: input.businessIdea,
-      clientLocation: input.clientLocation,
-      strictLocal: input.strictLocal,
-    });
-
-    // Step 1.5: Anticipate Risks
-    console.log(`   🔮 Anticipating risks for: ${input.businessIdea}...`);
-    const anticipatedRisksResponse = await anticipateRisksFlow({
-      businessIdea: input.businessIdea,
-      analysis,
-      clientLocation: input.clientLocation,
-    });
-    const anticipatedRisks = anticipatedRisksResponse.anticipated_risks;
-
-    // Step 2: Architect the chain (nodes + edges)
-    const architecture = await architectChainFlow({
-      businessIdea: input.businessIdea,
-      analysis,
-      anticipatedRisks,
-      clientLocation: input.clientLocation,
-      strictLocal: input.strictLocal,
-    });
-
-    // Step 3: Generate UI configs for ALL nodes in a single batched request to avoid rate limits
-    console.log(`   🎨 Batching UI configurations for ${architecture.nodes.length} nodes...`);
-    const uiConfigsResponse = await batchGenerateUIConfigFlow({
-      nodes: architecture.nodes,
-      analysis,
-    });
-    
-    console.log(`   🐛 DEBUG uiConfigsResponse:`, JSON.stringify(uiConfigsResponse).substring(0, 500));
-    
-    const uiConfigs = uiConfigsResponse.configs || {};
-
-    const nodesWithUI = architecture.nodes.map(node => {
-      // Fallback config if AI accidentally missed one (extremely rare)
-      let config: any = uiConfigs[node.id] || uiConfigs[`[${node.id}]`];
-      if (typeof config === 'string') {
-        try { config = JSON.parse(config); } catch (e) { config = null; }
-      }
-      if (config && config.components && !config.page_components) {
-        config.page_components = config.components;
-      }
-      if (!config || typeof config !== 'object') {
-        config = {
-          icon: 'factory',
-          color: '#4CAF50',
-          page_components: [{ type: 'kpi_card_row', args: { cards: [] } }]
-        };
-      }
-      return {
-        ...node,
-        status: 'active' as const,
-        ui_config: config,
+  const nodesWithUI = architecture.nodes.map(node => {
+    let config: any = uiConfigs[node.id] || uiConfigs[`[${node.id}]`];
+    if (!config || typeof config !== 'object') {
+      config = {
+        icon: 'factory',
+        color: '#4CAF50',
+        page_components: [{ type: 'kpi_card_row', args: { cards: [] } }]
       };
-    });
-
-    // Step 4: Assemble the complete supply chain
-    const supplyChain: SupplyChain = {
-      id: `sc_${uuidv4().split('-')[0]}`,
-      name: `${analysis.product_type} Supply Chain`,
-      business_idea: input.businessIdea,
-      status: 'active',
-      created_at: new Date().toISOString(),
-      nodes: nodesWithUI,
-      edges: architecture.edges.map((edge) => ({
-        ...edge,
-        relationship: edge.relationship as any,
-      })),
+    }
+    return {
+      ...node,
+      status: 'active' as const,
+      ui_config: config,
     };
+  });
 
-    // Validate against our schema
-    const validated = SupplyChainSchema.parse(supplyChain);
-    return validated;
-  }
-);
+  const supplyChain: SupplyChain = {
+    id: `sc_${uuidv4().split('-')[0]}`,
+    name: `${analysis.product_type} Supply Chain`,
+    business_idea: businessIdea,
+    status: 'active',
+    created_at: new Date().toISOString(),
+    nodes: nodesWithUI,
+    edges: architecture.edges.map((edge: any) => ({
+      ...edge,
+      relationship: edge.relationship,
+    })),
+  };
 
-export { ai };
+  return { supplyChain };
+}
+
+// ============================================================
+// Build the Graph
+// ============================================================
+const builder = new StateGraph(GraphState)
+  .addNode("analyzeBusiness", analyzeBusiness)
+  .addNode("anticipateRisks", anticipateRisks)
+  .addNode("architectChain", architectChain)
+  .addNode("generateUIConfigs", generateUIConfigs)
+  .addNode("assembleChain", assembleChain)
+  .addEdge(START, "analyzeBusiness")
+  .addEdge("analyzeBusiness", "anticipateRisks")
+  .addEdge("anticipateRisks", "architectChain")
+  .addEdge("architectChain", "generateUIConfigs")
+  .addEdge("generateUIConfigs", "assembleChain")
+  .addEdge("assembleChain", END);
+
+export const supplyChainGraph = builder.compile();
+
+export async function generateSupplyChainFlow(input: {
+  businessIdea: string;
+  clientLocation?: { lat: number; lng: number; address: string };
+  strictLocal?: boolean;
+  destination?: string;
+  chainScope?: string;
+  displayStrategy?: string;
+}): Promise<SupplyChain> {
+  const result = await supplyChainGraph.invoke({
+    businessIdea: input.businessIdea,
+    clientLocation: input.clientLocation,
+    strictLocal: input.strictLocal,
+    destination: input.destination,
+    chainScope: input.chainScope,
+    displayStrategy: input.displayStrategy,
+  });
+
+  return result.supplyChain;
+}

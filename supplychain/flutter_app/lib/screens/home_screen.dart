@@ -22,7 +22,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _originController = TextEditingController();
   Map<String, dynamic>? _clientLocation;
   bool _isFetchingLocation = false;
-  bool _strictLocal = false;
   String _chainScope = 'auto'; // 'auto', 'intra', 'inter'
   String _displayStrategy = 'best_route'; // 'best_route', 'all_options'
   late AnimationController _bgAnimController;
@@ -358,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                           const SizedBox(width: 12),
                                           Text(
-                                            'AI is designing your supply chain...',
+                                            provider.generationStatus ?? 'AI is designing your supply chain...',
                                             style: GoogleFonts.inter(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w600,
@@ -602,7 +601,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           'address': address,
         };
         _originController.text = address;
-        _strictLocal = true; // Default to true when location is fetched
       });
     } catch (e) {
       if (mounted) {

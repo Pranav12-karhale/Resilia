@@ -293,7 +293,7 @@ class _GeneratingScreenState extends State<GeneratingScreen>
                             ),
                             const SizedBox(width: 10),
                             Text(
-                              stage['text'] as String,
+                              context.watch<SupplyChainProvider>().generationStatus ?? stage['text'] as String,
                               style: GoogleFonts.inter(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,

@@ -1,6 +1,6 @@
-# Adaptive Supply Chain Platform
+# Adaptive Supply Chain Platform (Resilia)
 
-An AI-powered dynamic supply chain management application designed to map out, analyze, and self-heal complex global and domestic logistics networks. Built for the Google Solution Challenge 2026, it leverages real-time AI to generate plausible supply chains based on business ideas and geographical constraints, identifies risks, and automates mitigation strategies.
+An AI-powered dynamic supply chain management application designed to map out, analyze, and self-heal complex global and domestic logistics networks. It leverages **LangGraph** and **LangChain** to generate plausible supply chains based on business ideas and geographical constraints, utilizes a local **Chroma** Vector Database for RAG (Retrieval-Augmented Generation) with disruption playbooks, and provides **Real-Time** dashboard synchronization across all connected clients.
 
 ---
 
@@ -9,110 +9,105 @@ An AI-powered dynamic supply chain management application designed to map out, a
 ### **Frontend (Mobile & Web App)**
 - **Framework:** Flutter (v3.5.0+)
 - **State Management:** Provider
+- **Real-Time Data:** Firebase Firestore Streams (Snapshots) and Server-Sent Events (SSE).
 - **Mapping & GIS:** `flutter_map` with `latlong2`, `geolocator`, and `geocoding` for coordinate mapping and live location tracing.
-- **UI & Animations:** `fl_chart` for data visualization, `shimmer` & `flutter_staggered_animations` for premium loading states and transitions, `animated_text_kit` for dynamic AI typing effects.
-- **Backend Communication:** Standard `http` package, directly integrating with Firebase Auth & the custom Express/Genkit API.
+- **UI & Animations:** `fl_chart` for data visualization, `shimmer` & `flutter_staggered_animations` for premium loading states.
 
-### **Backend (Microservices & AI)**
-- **Runtime:** Node.js (TypeScript) deployed via Firebase Cloud Functions.
-- **Framework:** Express.js 
-- **AI / Generative Model Orchestration:** Google Genkit (`@genkit-ai/google-genai`) to interface with Gemini models (3.1 Pro / 1.5 Flash).
-- **Validation:** Zod for robust AI output parsing and schema enforcement.
+### **Backend (Microservices & Agentic AI)**
+- **Runtime:** Node.js (TypeScript) & Express.js.
+- **Agentic Orchestration:** **LangGraph** and **LangChain** for multi-stage AI reasoning workflows.
+- **RAG & Vector Store:** **Chroma DB** (via Docker) running locally for semantic search over mitigation playbooks (`DISRUPTION_PLAYBOOK`).
+- **Containerization:** Docker & `docker-compose` to orchestrate the Node backend, Vector Store, and background tasks.
+- **Observability:** LangSmith (for AI tracing), Winston & Morgan (for request logging).
 
-### **Cloud & Infrastructure (Google Cloud / Firebase)**
-- **Authentication:** Firebase Authentication (Google Sign-In & Email/Password).
-- **Database:** Cloud Firestore (NoSQL) for storing generated supply chains, risk reports, and user data.
-- **Hosting / Deployment:** Firebase Hosting (for web) and Firebase Functions (for backend Express API).
+### **Cloud & Infrastructure**
+- **Database:** Cloud Firestore (NoSQL) for real-time synchronization of supply chains and risk data.
+- **Frontend Hosting:** AWS Amplify (Automated CI/CD for the Flutter Web build) backed by Amazon CloudFront.
+- **Backend Hosting:** Container-ready (designed for AWS ECS / Google Cloud Run) given the Docker requirement.
 
 ---
 
 ## 🏗 Architecture
 
-The platform follows a decoupled, serverless client-server architecture:
+The platform follows a decoupled, real-time architecture:
 
 1. **Client Tier (Flutter App):**
-   Handles all user interactions, UI state, and mapping logic. The application dynamically adjusts to system themes (Light/Dark mode) and user location (for localized supply chain generation). It authenticates users directly with Firebase Auth.
+   Handles all user interactions, UI state, and mapping logic. The application connects to Firestore directly via `cloud_firestore` to receive **instant, real-time updates** when a disruption occurs or is resolved. It also consumes Server-Sent Events (SSE) to display the live thoughts of the AI during generation.
 
-2. **API Tier (Express on Firebase Functions):**
-   Acts as the secure middleware between the client and the core AI engines. It authenticates requests using Firebase ID tokens and provides a RESTful API:
-   - `POST /api/generate` - Constructs the supply chain based on prompt and origin/destination constraints.
+2. **API Tier (Express + LangGraph):**
+   Acts as the secure middleware and orchestrator.
+   - `POST /api/generate-stream` - Streams LangGraph node execution states back to the client using SSE.
    - `POST /api/chains/:id/risk-scan` - Evaluates geopolitical, climate, and cyber risks for nodes using Gemini.
-   - `POST /api/chains/:id/disruptions/resolve` - Proposes intelligent alternative routing (mitigation plans) when nodes fail.
+   - `POST /api/chains/:id/disruptions/resolve` - Proposes intelligent alternative routing (mitigation plans) by performing RAG against Chroma DB.
 
-3. **AI Generation Tier (Google Genkit):**
-   The backend implements an intelligent fallback mechanism (e.g., trying Gemini 3.1 Pro, falling back to Flash, with API key rotation) to ensure high availability and bypass rate limits. It relies on strictly defined Zod schemas to guarantee the AI responds with perfectly formatted JSON representing the supply chain graph (nodes and edges).
-
-4. **Data Tier (Firestore):**
-   Saves user-specific generated supply chains, historical data, and AI-generated risk reports.
+3. **Data & Retrieval Tier (Chroma & Firestore):**
+   - **Chroma DB:** Containerized vector database storing semantic embeddings of mitigation strategies.
+   - **Firestore:** Stores the actual generated graphs (nodes/edges). Flutter listens to changes on these documents to achieve a real-time, multi-device synchronized experience.
 
 ---
 
-## 🚀 Deployment Guide (GitHub to Firebase)
+## 🚀 Local Development Setup
 
-This project is architected to be deployed entirely on the **Google Cloud / Firebase Free Tier (Spark Plan) / Google Cloud for Students**.
+Because the backend relies on a local Vector Database (Chroma), the backend must be run using Docker.
 
 ### **Prerequisites**
-1. A Google Cloud / Firebase Project.
-2. Firebase CLI installed (`npm install -g firebase-tools`).
+1. Docker Desktop installed and running.
+2. Node.js (v18+) and npm installed.
 3. Flutter SDK installed.
-4. Node.js (v18+) installed.
 
 ### **1. Environment Configuration**
-Clone the repository and set up your environment variables.
-
-**Backend (`backend/functions/.env`):**
+Create a `.env` file in the `backend/functions` directory:
 ```env
 GOOGLE_GENAI_API_KEY="your_gemini_api_key_here"
-FIREBASE_PROJECT_ID="your_firebase_project_id"
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY="your_langsmith_api_key"
+LANGCHAIN_PROJECT="Resilia"
 ```
 
-### **2. Deploying the Backend (Firebase Functions)**
-The backend is an Express application wrapped inside a Firebase Cloud Function.
+### **2. Running the Backend (Docker)**
+The backend is fully containerized via `docker-compose`. This spins up both the Node.js Express server and the Chroma DB instance.
 
 ```bash
-cd backend/functions
-npm install
-npm run build
-firebase login
-firebase deploy --only functions
+cd backend
+docker-compose up --build
 ```
-*Note: Make sure to update the backend URL in your Flutter app to point to your deployed Firebase Function URL.*
 
-### **3. Deploying the Frontend (Flutter Web)**
+### **3. Seeding the Vector Database**
+Once the backend is running, you need to populate Chroma with the disruption playbook embeddings for RAG to work. In a new terminal:
+```bash
+cd backend/functions
+npx tsx src/scripts/seed_playbook.ts
+```
 
-To deploy the Flutter application as a Progressive Web App (PWA) via Firebase Hosting:
+### **4. Running the Frontend (Flutter)**
+Start the Flutter app locally pointing to your Docker backend.
 
-1. Build the web app:
 ```bash
 cd flutter_app
 flutter clean
 flutter pub get
-flutter build web --release
+flutter run -d chrome
 ```
-
-2. Initialize Firebase Hosting (if not already done):
-```bash
-firebase init hosting
-# Set the public directory to: build/web
-# Configure as a single-page app: Yes
-# Set up automatic builds and deploys with GitHub: (Optional, choose Yes for CI/CD)
-```
-
-3. Deploy to Firebase Hosting:
-```bash
-firebase deploy --only hosting
-```
-
-### **4. Setting up GitHub Actions CI/CD (Optional)**
-To automatically deploy your Flutter Web app and Firebase Functions when pushing to GitHub:
-1. Run `firebase init hosting:github` in the project root.
-2. Follow the prompts to authorize the Firebase CLI with your GitHub account.
-3. This will generate a `.github/workflows` directory containing the deployment YAML files.
 
 ---
 
-## 🧠 Core Workflows
+## 🌍 Production Deployment
 
-- **Context-Aware Generation:** The AI determines whether a supply chain should be domestic or international based on user location. If a user provides an origin and destination, it calculates a specific linear route; otherwise, it maps out a local hub-and-spoke network.
-- **Intelligent Fallbacks:** If the AI API fails or hits rate limits, the backend gracefully falls back to structured Mock Data, patching the geographical coordinates to ensure the frontend map doesn't break.
-- **Risk Assessment:** The AI runs a separate, specialized prompt over all generated nodes to evaluate their specific geographical, political, and climate risks, returning an actionable mitigation report.
+### **Frontend (AWS Amplify)**
+The Flutter web application is configured to deploy automatically via **AWS Amplify**. 
+An `amplify.yml` build specification is included in the repository root.
+
+**Steps:**
+1. Go to the AWS Amplify Console.
+2. Connect your Git repository.
+3. Amplify will automatically detect the `amplify.yml` and set up continuous deployment.
+4. Your app will be served globally via Amazon CloudFront.
+
+### **Backend (Cloud Run / AWS ECS)**
+Because the backend now requires containerization (for Chroma DB), you must deploy the `docker-compose` setup to a container hosting service. 
+*Note: This replaces the previous Firebase Cloud Functions deployment, which does not natively support persistent local Vector Databases.*
+
+1. Push the `backend/` Docker image to Amazon ECR or Google Artifact Registry.
+2. Deploy the container to Google Cloud Run or AWS Fargate.
+3. Provision a managed Chroma DB or Pinecone instance if you prefer not to self-host the vector store.
+4. Update the Flutter `ApiService.dart` to point to your new production backend URL.

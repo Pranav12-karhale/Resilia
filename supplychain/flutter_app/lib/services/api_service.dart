@@ -68,6 +68,49 @@ class ApiService {
     }
   }
 
+  /// Generate a new supply chain using Server-Sent Events (SSE) for real-time progress
+  static Stream<Map<String, dynamic>> generateSupplyChainStream(
+    String businessIdea, {
+    Map<String, dynamic>? clientLocation,
+    bool strictLocal = false,
+    String chainScope = 'auto',
+    String? destination,
+    String displayStrategy = 'best_route',
+  }) async* {
+    final body = {
+      'businessIdea': businessIdea,
+      if (clientLocation != null) 'clientLocation': clientLocation,
+      if (strictLocal) 'strictLocal': strictLocal,
+      'chainScope': chainScope,
+      if (destination != null && destination.isNotEmpty) 'destination': destination,
+      'displayStrategy': displayStrategy,
+    };
+
+    final request = http.Request('POST', Uri.parse('$baseUrl/generate-stream'));
+    request.headers.addAll(await _headers());
+    request.headers['Accept'] = 'text/event-stream';
+    request.body = jsonEncode(body);
+
+    final response = await http.Client().send(request);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to connect to stream: ${response.statusCode}');
+    }
+
+    await for (var chunk in response.stream.transform(utf8.decoder).transform(const LineSplitter())) {
+      if (chunk.isEmpty) continue;
+      if (chunk.startsWith('data: ')) {
+        final dataStr = chunk.substring(6);
+        try {
+          final Map<String, dynamic> data = jsonDecode(dataStr);
+          yield data;
+        } catch (e) {
+          // Ignore parse errors for incomplete chunks
+        }
+      }
+    }
+  }
+
   /// Get list of all supply chains
   static Future<List<Map<String, dynamic>>> listChains() async {
     final response = await http.get(

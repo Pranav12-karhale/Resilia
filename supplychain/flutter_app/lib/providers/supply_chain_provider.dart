@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/supply_chain.dart';
 import '../models/risk_models.dart';
 import '../services/api_service.dart';
@@ -11,6 +13,8 @@ class SupplyChainProvider extends ChangeNotifier {
   String? _selectedNodeId;
   RiskReport? _riskReport;
   bool _isScanning = false;
+  String? _generationStatus;
+  StreamSubscription<DocumentSnapshot>? _chainSubscription;
 
   SupplyChain? get currentChain => _currentChain;
   List<Map<String, dynamic>> get chainList => _chainList;
@@ -22,6 +26,7 @@ class SupplyChainProvider extends ChangeNotifier {
   bool get hasRiskData => _riskReport != null;
   double get overallChainRisk => _riskReport?.overallChainRisk ?? 0;
   List<RiskScanResult> get highRiskNodes => _riskReport?.highRiskNodes ?? [];
+  String? get generationStatus => _generationStatus;
 
   SupplyChainNode? get selectedNode {
     if (_currentChain == null || _selectedNodeId == null) return null;
@@ -32,7 +37,13 @@ class SupplyChainProvider extends ChangeNotifier {
     }
   }
 
-  /// Generate a new supply chain from a business idea
+  @override
+  void dispose() {
+    _chainSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// Generate a new supply chain from a business idea using SSE stream
   Future<void> generateChain(
     String businessIdea, {
     Map<String, dynamic>? clientLocation,
@@ -43,10 +54,11 @@ class SupplyChainProvider extends ChangeNotifier {
   }) async {
     _isGenerating = true;
     _error = null;
+    _generationStatus = "Connecting to AI...";
     notifyListeners();
 
     try {
-      final chain = await ApiService.generateSupplyChain(
+      final stream = ApiService.generateSupplyChainStream(
         businessIdea,
         clientLocation: clientLocation,
         strictLocal: strictLocal,
@@ -54,30 +66,82 @@ class SupplyChainProvider extends ChangeNotifier {
         destination: destination,
         displayStrategy: displayStrategy,
       );
-      _currentChain = chain;
-      _selectedNodeId = chain.nodes.isNotEmpty ? chain.nodes.first.id : null;
+
+      await for (final chunk in stream) {
+        if (chunk.containsKey('error')) {
+          throw Exception(chunk['error']);
+        }
+        if (chunk.containsKey('status')) {
+          _generationStatus = chunk['status'];
+          notifyListeners();
+        }
+        if (chunk.containsKey('success') && chunk['success'] == true) {
+          final chainData = chunk['supply_chain'];
+          if (chainData != null) {
+            _currentChain = SupplyChain.fromJson(chainData);
+            _selectedNodeId = _currentChain!.nodes.isNotEmpty ? _currentChain!.nodes.first.id : null;
+            _listenToChain(_currentChain!.id); // Start real-time Firestore listener
+          }
+        }
+      }
+      
       _error = null;
       await refreshChainList();
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isGenerating = false;
+      _generationStatus = null;
       notifyListeners();
     }
   }
 
-  /// Load an existing chain
+  /// Load an existing chain and start listening to real-time updates
   Future<void> loadChain(String chainId) async {
     try {
+      // Fetch initial data via API to ensure it exists and we have permissions
       final chain = await ApiService.getChain(chainId);
       _currentChain = chain;
       _selectedNodeId = chain.nodes.isNotEmpty ? chain.nodes.first.id : null;
       _error = null;
       notifyListeners();
+
+      // Start listening for real-time Firestore updates
+      _listenToChain(chainId);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
     }
+  }
+
+  void _listenToChain(String chainId) {
+    _chainSubscription?.cancel();
+    _chainSubscription = FirebaseFirestore.instance
+        .collection('supply_chains')
+        .doc(chainId)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data() as Map<String, dynamic>;
+        
+        // Preserve selected node if possible
+        final oldSelectedNodeId = _selectedNodeId;
+        
+        _currentChain = SupplyChain.fromJson(data);
+        
+        if (oldSelectedNodeId != null && _currentChain!.nodes.any((n) => n.id == oldSelectedNodeId)) {
+          _selectedNodeId = oldSelectedNodeId;
+        } else if (_currentChain!.nodes.isNotEmpty) {
+          _selectedNodeId = _currentChain!.nodes.first.id;
+        }
+        
+        notifyListeners();
+      }
+    }, onError: (error) {
+      // Fallback: If Firestore fails (e.g., rules or local testing without Firebase), 
+      // we just stick to the HTTP updates which we still get via the API calls.
+      print("Firestore listener error: $error");
+    });
   }
 
   /// Select a node to display

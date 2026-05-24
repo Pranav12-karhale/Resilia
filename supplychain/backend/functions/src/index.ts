@@ -2,33 +2,51 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import admin from 'firebase-admin';
+import morgan from 'morgan';
+import winston from 'winston';
 import { generateMockSupplyChain } from './utils/mock_data.js';
 import type { SupplyChain, DisruptionEvent, MitigationAction, RiskReport } from './schemas/supply_chain_schema.js';
 
 dotenv.config();
 
+// ── Logging Configuration ──────────────────────────────────────────
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    }),
+  ],
+});
+
 // ── Firebase Admin initialization ────────────────────────────────
-// Uses Application Default Credentials (ADC) or GOOGLE_APPLICATION_CREDENTIALS
 let db: admin.firestore.Firestore | null = null;
 try {
   admin.initializeApp({
-    // If running locally without ADC, it initializes with limited functionality
-    // Auth verification still works if the project ID is set
     projectId: process.env.FIREBASE_PROJECT_ID || undefined,
   });
-  console.log('🔐 Firebase Admin initialized');
+  logger.info('🔐 Firebase Admin initialized');
   if (process.env.FIREBASE_PROJECT_ID) {
     db = admin.firestore();
-    console.log('🔥 Firestore initialized for permanent history');
+    logger.info('🔥 Firestore initialized for permanent history');
   }
 } catch (err: any) {
-  console.warn('⚠️  Firebase Admin init failed:', err.message);
-  console.warn('   Auth middleware will pass through (dev mode)');
+  logger.warn('⚠️ Firebase Admin init failed: ' + err.message);
 }
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Add Morgan request logging
+app.use(morgan('dev', {
+  stream: { write: (message) => logger.info(message.trim()) }
+}));
+
 
 // ── Auth Middleware ───────────────────────────────────────────────
 // Verifies Firebase ID tokens from the Authorization header.
@@ -272,6 +290,93 @@ app.post('/api/generate', async (req, res) => {
   } catch (error: any) {
     console.error('❌ Generation failed:', error.message);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================
+// POST /api/generate-stream - Generate supply chain via SSE
+// ============================================================
+app.post('/api/generate-stream', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  try {
+    const { businessIdea, clientLocation, strictLocal, chainScope, destination, displayStrategy } = req.body;
+    if (!businessIdea || typeof businessIdea !== 'string') {
+      res.write(`data: ${JSON.stringify({ error: 'businessIdea is required' })}\n\n`);
+      return res.end();
+    }
+
+    let enrichedIdea = businessIdea;
+    const scope = chainScope || 'auto';
+    const scopeInstruction = scope === 'inter'
+      ? 'This is an INTERNATIONAL supply chain. Include cross-border logistics, customs, and global shipping nodes.'
+      : scope === 'intra'
+        ? 'This is a DOMESTIC/LOCAL supply chain. Keep ALL nodes within the same country. Do NOT include international shipping or customs.'
+        : '';
+
+    const strategyInstruction = displayStrategy === 'all_options'
+      ? 'DISPLAY STRATEGY: ALL OPTIONS. Instead of a single linear path, you MUST generate MULTIPLE alternative nodes (e.g., 2-3 different warehouse options, 2-3 different supplier options) for each stage of the supply chain. Assign alternative nodes at the same stage the SAME "order" number. This will allow the UI to display them as parallel alternatives.'
+      : 'DISPLAY STRATEGY: BEST ROUTE. Generate a single, highly optimized, linear route. Each stage should have exactly one node.';
+
+    if (clientLocation && destination) {
+      enrichedIdea = `${businessIdea}. ${scopeInstruction} ${strategyInstruction} The business ORIGIN is in ${clientLocation.address} (Lat: ${clientLocation.lat}, Lng: ${clientLocation.lng}). The DESTINATION/market is: ${destination}. Design the BEST POSSIBLE ROUTE from origin to destination, using real factories, warehouses, ports, and logistics providers that exist along this corridor. Every node must be a real, factual business.`;
+    } else if (clientLocation && !destination) {
+      enrichedIdea = `${businessIdea}. ${scopeInstruction} ${strategyInstruction} IMPORTANT: This is a LOCAL business based in ${clientLocation.address} (Lat: ${clientLocation.lat}, Lng: ${clientLocation.lng}). ALL suppliers, warehouses, manufacturers, and operations MUST be located within 100 miles of this location. Use ONLY factual, actually existing local businesses. Do NOT use international suppliers.`;
+    } else if (destination) {
+      enrichedIdea = `${businessIdea}. ${scopeInstruction} ${strategyInstruction} The product must reach: ${destination}. Design a supply chain that delivers to this destination using real, factual businesses.`;
+    } else {
+      enrichedIdea = `${businessIdea}. ${scopeInstruction} ${strategyInstruction} Design a general supply chain using real-world industry hubs and factual businesses.`;
+    }
+
+    if (!USE_AI) {
+      res.write(`data: ${JSON.stringify({ status: 'Simulating AI generation...' })}\n\n`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const chain = generateMockSupplyChain(businessIdea);
+      patchMockDataLocation(chain, clientLocation, destination, strictLocal);
+      await saveChain(chain, (req as any).uid);
+      res.write(`data: ${JSON.stringify({ success: true, supply_chain: chain })}\n\n`);
+      return res.end();
+    }
+
+    const { supplyChainGraph } = await import('./flows/generate_chain.js');
+    
+    // Create the stream
+    const stream = await supplyChainGraph.stream({
+      businessIdea: enrichedIdea,
+      clientLocation,
+      strictLocal: strictLocal || (!destination && !!clientLocation),
+      destination,
+      chainScope: scope,
+      displayStrategy,
+    });
+
+    for await (const chunk of stream) {
+      // Chunk contains the node that just executed and its returned state diff
+      const nodeName = Object.keys(chunk)[0];
+      
+      let statusMessage = "Processing...";
+      if (nodeName === "analyzeBusiness") statusMessage = "Analyzing business requirements...";
+      else if (nodeName === "anticipateRisks") statusMessage = "Anticipating macro risks...";
+      else if (nodeName === "architectChain") statusMessage = "Architecting supply chain network...";
+      else if (nodeName === "generateUIConfigs") statusMessage = "Generating user interfaces...";
+      else if (nodeName === "assembleChain") {
+        statusMessage = "Assembling final chain...";
+        const finalChain = chunk[nodeName].supplyChain;
+        await saveChain(finalChain, (req as any).uid);
+        res.write(`data: ${JSON.stringify({ status: statusMessage })}\n\n`);
+        res.write(`data: ${JSON.stringify({ success: true, supply_chain: finalChain })}\n\n`);
+        return res.end();
+      }
+
+      res.write(`data: ${JSON.stringify({ status: statusMessage })}\n\n`);
+    }
+
+  } catch (error: any) {
+    console.error('❌ Stream Generation failed:', error.message);
+    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    res.end();
   }
 });
 
