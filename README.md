@@ -1,61 +1,80 @@
-# Adaptive Supply Chain Platform (Resilia)
+<div align="center">
+  <h1>🌐 Resilia: Adaptive Supply Chain Platform</h1>
+  <p>
+    <b>An AI-powered, dynamic supply chain management application designed to map out, analyze, and self-heal complex global logistics networks in real-time.</b>
+  </p>
+  
+  [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
+  [![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+  [![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain.com/)
+  [![TensorFlow.js](https://img.shields.io/badge/TensorFlow.js-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://js.tensorflow.org/)
+  [![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+  [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+</div>
 
-An AI-powered dynamic supply chain management application designed to map out, analyze, and self-heal complex global and domestic logistics networks. It leverages **LangGraph** and **LangChain** to generate plausible supply chains based on business ideas and geographical constraints, utilizes a local **Chroma** Vector Database for RAG (Retrieval-Augmented Generation) with disruption playbooks, and provides **Real-Time** dashboard synchronization across all connected clients.
+<br/>
 
----
+## 📖 Overview
 
-## 🛠 Tech Stack
+**Resilia** transforms how businesses manage and mitigate supply chain risks. By leveraging cutting-edge Agentic AI (LangGraph + LangChain) and an embedded ML Risk Model (TensorFlow.js), the platform intelligently generates feasible logistics networks from simple business ideas. It continuously scores geopolitical, climate, cyber, and transport risks, and autonomously recommends mitigation strategies using RAG (Retrieval-Augmented Generation) on customized disruption playbooks.
 
-### **Frontend (Mobile & Web App)**
-- **Framework:** Flutter (v3.5.0+)
-- **State Management:** Provider
-- **Real-Time Data:** Firebase Firestore Streams (Snapshots) and Server-Sent Events (SSE).
-- **Mapping & GIS:** `flutter_map` with `latlong2`, `geolocator`, and `geocoding` for coordinate mapping and live location tracing.
-- **UI & Animations:** `fl_chart` for data visualization, `shimmer` & `flutter_staggered_animations` for premium loading states.
+## ✨ Key Features
 
-### **Backend (Microservices & Agentic AI)**
-- **Runtime:** Node.js (TypeScript) & Express.js.
-- **Agentic Orchestration:** **LangGraph** and **LangChain** for multi-stage AI reasoning workflows.
-- **RAG & Vector Store:** **Chroma DB** (via Docker) running locally for semantic search over mitigation playbooks (`DISRUPTION_PLAYBOOK`).
-- **Containerization:** Docker & `docker-compose` to orchestrate the Node backend, Vector Store, and background tasks.
-- **Observability:** LangSmith (for AI tracing), Winston & Morgan (for request logging).
-
-### **Cloud & Infrastructure**
-- **Database:** Cloud Firestore (NoSQL) for real-time synchronization of supply chains and risk data.
-- **Frontend Hosting:** AWS Amplify (Automated CI/CD for the Flutter Web build) backed by Amazon CloudFront.
-- **Backend Hosting:** Container-ready (designed for AWS ECS / Google Cloud Run) given the Docker requirement.
-
----
+- 🧠 **Agentic AI Pipeline:** 6 specialized AI agents orchestrate the design, risk anticipation, and UI generation for the supply chain.
+- 🔮 **Predictive Risk Modeling:** Custom TensorFlow.js neural network trained on supply chain data to forecast risks globally.
+- ⚡ **Real-Time Synchronization:** Firebase Firestore and Server-Sent Events (SSE) provide instant UI updates across all connected devices.
+- 🗺️ **Dynamic GIS Mapping:** Interactive map interface built with `flutter_map` offering live location tracking and risk zone visualization.
+- 🛡️ **Self-Healing Logistics:** Disruption playbooks via a Vector Database provide intelligent, context-aware alternative routing.
 
 ## 🏗 Architecture
 
-The platform follows a decoupled, real-time architecture:
+The platform operates on a decoupled, serverless-ready architecture optimized for real-time reactivity and AI inference.
 
-1. **Client Tier (Flutter App):**
-   Handles all user interactions, UI state, and mapping logic. The application connects to Firestore directly via `cloud_firestore` to receive **instant, real-time updates** when a disruption occurs or is resolved. It also consumes Server-Sent Events (SSE) to display the live thoughts of the AI during generation.
+```mermaid
+graph TD
+    Client[Flutter Web & Mobile] -->|Real-time Streams| Firestore[(Firebase Firestore)]
+    Client -->|API Requests| API[Express.js API Gateway]
+    
+    API --> Agentic[LangGraph Multi-Agent Pipeline]
+    
+    subgraph Agentic Pipeline
+        Agent1[Business Analyzer] --> Agent1_5[Risk Anticipator]
+        Agent1_5 --> Agent2[Chain Architect]
+        Agent2 --> Agent2_5[ML Risk Scorer - TF.js]
+        Agent2_5 --> Agent3[UI Config Generator]
+        Agent3 --> Agent4[Assembler]
+    end
+    
+    Agentic -->|Embeddings & RAG| VectorDB[(Chroma DB)]
+    Agentic -->|Writes Graph Data| Firestore
+```
 
-2. **API Tier (Express + LangGraph):**
-   Acts as the secure middleware and orchestrator.
-   - `POST /api/generate-stream` - Streams LangGraph node execution states back to the client using SSE.
-   - `POST /api/chains/:id/risk-scan` - Evaluates geopolitical, climate, and cyber risks for nodes using Gemini.
-   - `POST /api/chains/:id/disruptions/resolve` - Proposes intelligent alternative routing (mitigation plans) by performing RAG against Chroma DB.
+## 🛠 Tech Stack
 
-3. **Data & Retrieval Tier (Chroma & Firestore):**
-   - **Chroma DB:** Containerized vector database storing semantic embeddings of mitigation strategies.
-   - **Firestore:** Stores the actual generated graphs (nodes/edges). Flutter listens to changes on these documents to achieve a real-time, multi-device synchronized experience.
+| Category | Technology |
+| :--- | :--- |
+| **Frontend** | Flutter (v3.5.0+), Provider, flutter_map, fl_chart |
+| **Backend** | Node.js (TypeScript), Express.js, Server-Sent Events (SSE) |
+| **AI / ML** | LangGraph, LangChain, TensorFlow.js, Gemini LLM |
+| **Database** | Cloud Firestore (Real-time NoSQL), Chroma DB (Vector Search) |
+| **DevOps & Cloud** | Docker, AWS Amplify (Frontend CI/CD), GCP Cloud Run (Backend) |
 
----
+## 🧠 ML Risk Model
 
-## 🚀 Local Development Setup
+Our custom **TensorFlow.js** neural network provides highly accurate predictive risk scoring:
+- **Architecture:** 3-layer neural network with ReLU activation and dropout regularization.
+- **Features:** Analyzes node type, geographic coordinates, and industry category.
+- **Output:** Outputs precise scores for Geopolitical, Climate, Cyber, and Transport risks.
+- **Hybrid Approach:** ML predictions are fused with LLM assessments for a robust final risk report.
 
-Because the backend relies on a local Vector Database (Chroma), the backend must be run using Docker.
+## 🚀 Getting Started
 
-### **Prerequisites**
-1. Docker Desktop installed and running.
-2. Node.js (v18+) and npm installed.
-3. Flutter SDK installed.
+### Prerequisites
+- Node.js (v18+) and npm
+- Flutter SDK (v3.5.0+)
+- Docker Desktop (Optional, for full containerized backend)
 
-### **1. Environment Configuration**
+### 1. Environment Configuration
 Create a `.env` file in the `backend/functions` directory:
 ```env
 GOOGLE_GENAI_API_KEY="your_gemini_api_key_here"
@@ -64,24 +83,17 @@ LANGCHAIN_API_KEY="your_langsmith_api_key"
 LANGCHAIN_PROJECT="Resilia"
 ```
 
-### **2. Running the Backend (Docker)**
-The backend is fully containerized via `docker-compose`. This spins up both the Node.js Express server and the Chroma DB instance.
-
-```bash
-cd backend
-docker-compose up --build
-```
-
-### **3. Seeding the Vector Database**
-Once the backend is running, you need to populate Chroma with the disruption playbook embeddings for RAG to work. In a new terminal:
+### 2. Run Backend
+Install dependencies and train the model:
 ```bash
 cd backend/functions
-npx tsx src/scripts/seed_playbook.ts
+npm install
+npm run train-model
+npm run dev
 ```
 
-### **4. Running the Frontend (Flutter)**
-Start the Flutter app locally pointing to your Docker backend.
-
+### 3. Run Frontend
+Launch the Flutter application pointing to your local API:
 ```bash
 cd flutter_app
 flutter clean
@@ -89,24 +101,20 @@ flutter pub get
 flutter run -d chrome
 ```
 
----
-
 ## 🌍 Production Deployment
 
-### **Frontend (AWS Amplify)**
-The Flutter web application is configured to deploy automatically via **AWS Amplify**. 
-An `amplify.yml` build specification is included in the repository root.
+### Frontend (AWS Amplify)
+The Flutter app is seamlessly deployed via **AWS Amplify**. A pre-configured `amplify.yml` exists at the root. Simply connect the repository in the AWS Console, and Amplify handles CI/CD globally via Amazon CloudFront.
 
-**Steps:**
-1. Go to the AWS Amplify Console.
-2. Connect your Git repository.
-3. Amplify will automatically detect the `amplify.yml` and set up continuous deployment.
-4. Your app will be served globally via Amazon CloudFront.
+### Backend (GCP Cloud Run / AWS ECS)
+The backend is containerized for portability. 
+1. Build the Docker image.
+2. Push to Google Artifact Registry or Amazon ECR.
+3. Deploy to **Google Cloud Run** or **AWS Fargate** for serverless, autoscaling AI execution.
 
-### **Backend (Cloud Run / AWS ECS)**
-Because the backend now requires containerization (for Chroma DB), you must deploy the `docker-compose` setup to a container hosting service. 
-*Note: This replaces the previous Firebase Cloud Functions deployment, which does not natively support persistent local Vector Databases.*
+## 📜 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-1. Push the `backend/` Docker image to Amazon ECR or Google Artifact Registry.
-2. Deploy the container to Google Cloud Run or AWS Fargate.
-3. Provision a managed Chroma DB or Pinecone instance if you prefer not to self-host the vector store.
+<div align="center">
+  <i>Built with ❤️ by an AI enthusiast.</i>
+</div>
