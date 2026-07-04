@@ -360,6 +360,7 @@ app.post('/api/generate-stream', async (req, res) => {
       if (nodeName === "analyzeBusiness") statusMessage = "Analyzing business requirements...";
       else if (nodeName === "anticipateRisks") statusMessage = "Anticipating macro risks...";
       else if (nodeName === "architectChain") statusMessage = "Architecting supply chain network...";
+      else if (nodeName === "mlRiskScoring") statusMessage = "Running ML risk analysis...";
       else if (nodeName === "generateUIConfigs") statusMessage = "Generating user interfaces...";
       else if (nodeName === "assembleChain") {
         statusMessage = "Assembling final chain...";

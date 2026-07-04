@@ -145,8 +145,8 @@ class _GeneratingScreenState extends State<GeneratingScreen>
                     colors: [
                       AppTheme.bgDark,
                       Color.lerp(
-                        const Color(0xFF0A0E1A),
-                        const Color(0xFF0F1B3D),
+                        const Color(0xFF071113),
+                        const Color(0xFF10232A),
                         _bgController.value,
                       )!,
                       AppTheme.bgDark,

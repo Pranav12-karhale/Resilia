@@ -6,23 +6,23 @@ class AppTheme {
   // ============================================================
   // Color Palette
   // ============================================================
-  static Color get bgDark => ThemeProvider.isDark ? const Color(0xFF0A0E1A) : const Color(0xFFFAFAFA);
-  static Color get bgCard => ThemeProvider.isDark ? const Color(0xFF111827) : const Color(0xFFFFFFFF);
-  static Color get bgCardHover => ThemeProvider.isDark ? const Color(0xFF1A2332) : const Color(0xFFF1F5F9);
-  static Color get bgSurface => ThemeProvider.isDark ? const Color(0xFF151B2B) : const Color(0xFFF3F4F6);
+  static Color get bgDark => ThemeProvider.isDark ? const Color(0xFF071113) : const Color(0xFFF7FAF8);
+  static Color get bgCard => ThemeProvider.isDark ? const Color(0xFF0E1A1D) : const Color(0xFFFFFFFF);
+  static Color get bgCardHover => ThemeProvider.isDark ? const Color(0xFF142529) : const Color(0xFFEFF6F2);
+  static Color get bgSurface => ThemeProvider.isDark ? const Color(0xFF132226) : const Color(0xFFF1F5F3);
   static Color get bgGlass => ThemeProvider.isDark ? const Color(0x1AFFFFFF) : const Color(0x0C000000);
 
-  static const Color accentBlue = Color(0xFF3B82F6);
-  static const Color accentTeal = Color(0xFF14B8A6);
-  static const Color accentPurple = Color(0xFF8B5CF6);
-  static const Color accentPink = Color(0xFFEC4899);
-  static const Color accentOrange = Color(0xFFF59E0B);
+  static const Color accentBlue = Color(0xFF2F6FED);
+  static const Color accentTeal = Color(0xFF2EC4A6);
+  static const Color accentPurple = Color(0xFF7657D8);
+  static const Color accentPink = Color(0xFFD84C7F);
+  static const Color accentOrange = Color(0xFFD98A17);
 
   static Color get textPrimary => ThemeProvider.isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A);
   static Color get textSecondary => ThemeProvider.isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
   static Color get textMuted => ThemeProvider.isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
 
-  static Color get borderColor => ThemeProvider.isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+  static Color get borderColor => ThemeProvider.isDark ? const Color(0xFF21343A) : const Color(0xFFDDE7E2);
   static Color get borderLight => ThemeProvider.isDark ? const Color(0x1AFFFFFF) : const Color(0x1A000000);
 
   static const Color success = Color(0xFF22C55E);
@@ -90,15 +90,15 @@ class AppTheme {
   // Gradients
   // ============================================================
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [accentBlue, accentTeal],
+    colors: [Color(0xFF2F6FED), Color(0xFF2EC4A6)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static LinearGradient get cardGradient => LinearGradient(
     colors: ThemeProvider.isDark 
-        ? [const Color(0xFF1A2332), const Color(0xFF111827)]
-        : [const Color(0xFFFFFFFF), const Color(0xFFF8FAFC)],
+        ? [const Color(0xFF102126), const Color(0xFF0C171A)]
+        : [const Color(0xFFFFFFFF), const Color(0xFFF7FBF8)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -116,13 +116,13 @@ class AppTheme {
   // ============================================================
   static BoxDecoration get glassDecoration => BoxDecoration(
     gradient: glassGradient,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: BorderRadius.circular(8),
     border: Border.all(color: borderLight, width: 1),
   );
 
   static BoxDecoration cardDecoration({Color? accentColor}) => BoxDecoration(
     gradient: cardGradient,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: BorderRadius.circular(8),
     border: Border.all(
       color: accentColor?.withAlpha(51) ?? borderColor,
       width: 1,
@@ -130,8 +130,8 @@ class AppTheme {
     boxShadow: [
       BoxShadow(
         color: (accentColor ?? Colors.black).withAlpha(ThemeProvider.isDark ? 26 : 10),
-        blurRadius: 20,
-        offset: const Offset(0, 4),
+        blurRadius: 24,
+        offset: const Offset(0, 12),
       ),
     ],
   );
@@ -142,16 +142,16 @@ class AppTheme {
   static ThemeData get darkTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: const Color(0xFF0A0E1A),
+    scaffoldBackgroundColor: const Color(0xFF071113),
     colorScheme: const ColorScheme.dark(
       primary: accentBlue,
       secondary: accentTeal,
-      surface: Color(0xFF111827),
+      surface: Color(0xFF0E1A1D),
       error: error,
     ),
     textTheme: _textTheme(Brightness.dark),
     appBarTheme: _appBarTheme(Brightness.dark),
-    drawerTheme: const DrawerThemeData(backgroundColor: Color(0xFF111827)),
+    drawerTheme: const DrawerThemeData(backgroundColor: Color(0xFF0E1A1D)),
     cardTheme: _cardTheme(Brightness.dark),
     elevatedButtonTheme: _elevatedButtonTheme(),
     outlinedButtonTheme: _outlinedButtonTheme(Brightness.dark),
@@ -166,7 +166,7 @@ class AppTheme {
   static ThemeData get lightTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    scaffoldBackgroundColor: const Color(0xFFFAFAFA),
+    scaffoldBackgroundColor: const Color(0xFFF7FAF8),
     colorScheme: const ColorScheme.light(
       primary: accentBlue,
       secondary: accentTeal,
@@ -193,8 +193,8 @@ class AppTheme {
     return GoogleFonts.interTextTheme(
       brightness == Brightness.dark ? ThemeData.dark().textTheme : ThemeData.light().textTheme,
     ).copyWith(
-      headlineLarge: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.w700, color: tPrimary, letterSpacing: -0.5),
-      headlineMedium: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w600, color: tPrimary, letterSpacing: -0.3),
+      headlineLarge: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.w700, color: tPrimary, letterSpacing: 0),
+      headlineMedium: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w600, color: tPrimary, letterSpacing: 0),
       headlineSmall: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600, color: tPrimary),
       titleLarge: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: tPrimary),
       titleMedium: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, color: tPrimary),
@@ -207,7 +207,7 @@ class AppTheme {
 
   static AppBarTheme _appBarTheme(Brightness brightness) {
     return AppBarTheme(
-      backgroundColor: brightness == Brightness.dark ? const Color(0xFF0A0E1A) : const Color(0xFFFAFAFA),
+      backgroundColor: brightness == Brightness.dark ? const Color(0xFF071113) : const Color(0xFFF7FAF8),
       elevation: 0,
       centerTitle: false,
       titleTextStyle: GoogleFonts.outfit(
@@ -221,11 +221,11 @@ class AppTheme {
 
   static CardThemeData _cardTheme(Brightness brightness) {
     return CardThemeData(
-      color: brightness == Brightness.dark ? const Color(0xFF111827) : const Color(0xFFFFFFFF),
+      color: brightness == Brightness.dark ? const Color(0xFF0E1A1D) : const Color(0xFFFFFFFF),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: brightness == Brightness.dark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0), width: 1),
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: brightness == Brightness.dark ? const Color(0xFF21343A) : const Color(0xFFDDE7E2), width: 1),
       ),
     );
   }
@@ -237,7 +237,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
       ),
     );
@@ -249,20 +249,20 @@ class AppTheme {
         foregroundColor: brightness == Brightness.dark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A),
         side: BorderSide(color: brightness == Brightness.dark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
   static InputDecorationTheme _inputDecorationTheme(Brightness brightness) {
-    final bColor = brightness == Brightness.dark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
-    final fillC = brightness == Brightness.dark ? const Color(0xFF151B2B) : const Color(0xFFF3F4F6);
+    final bColor = brightness == Brightness.dark ? const Color(0xFF21343A) : const Color(0xFFDDE7E2);
+    final fillC = brightness == Brightness.dark ? const Color(0xFF132226) : const Color(0xFFF1F5F3);
     return InputDecorationTheme(
       filled: true,
       fillColor: fillC,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: bColor)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: bColor)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: accentBlue, width: 2)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: bColor)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: bColor)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: accentTeal, width: 2)),
       hintStyle: GoogleFonts.inter(color: const Color(0xFF64748B)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
@@ -270,16 +270,16 @@ class AppTheme {
 
   static DividerThemeData _dividerTheme(Brightness brightness) {
     return DividerThemeData(
-      color: brightness == Brightness.dark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+      color: brightness == Brightness.dark ? const Color(0xFF21343A) : const Color(0xFFDDE7E2),
       thickness: 1,
     );
   }
 
   static ChipThemeData _chipTheme(Brightness brightness) {
     return ChipThemeData(
-      backgroundColor: brightness == Brightness.dark ? const Color(0xFF151B2B) : const Color(0xFFF3F4F6),
+      backgroundColor: brightness == Brightness.dark ? const Color(0xFF132226) : const Color(0xFFF1F5F3),
       labelStyle: GoogleFonts.inter(fontSize: 12, color: brightness == Brightness.dark ? const Color(0xFF94A3B8) : const Color(0xFF334155)),
-      side: BorderSide(color: brightness == Brightness.dark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+      side: BorderSide(color: brightness == Brightness.dark ? const Color(0xFF21343A) : const Color(0xFFDDE7E2)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
   }

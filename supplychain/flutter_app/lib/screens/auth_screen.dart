@@ -67,13 +67,13 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                     colors: [
                       AppTheme.bgDark,
                       Color.lerp(
-                        const Color(0xFF0A0E1A),
-                        const Color(0xFF101935),
+                        const Color(0xFF071113),
+                        const Color(0xFF10232A),
                         _bgController.value,
                       )!,
                       Color.lerp(
-                        const Color(0xFF0A0E1A),
-                        const Color(0xFF0B1628),
+                        const Color(0xFF071113),
+                        const Color(0xFF0E1A1D),
                         1 - _bgController.value,
                       )!,
                     ],
@@ -116,7 +116,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                        child: Icon(Icons.hub, color: Colors.white, size: 38),
+                        child: const Icon(Icons.hub, color: Colors.white, size: 38),
                       ),
                       const SizedBox(height: 24),
 
@@ -125,7 +125,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                         shaderCallback: (bounds) =>
                             AppTheme.primaryGradient.createShader(bounds),
                         child: Text(
-                          'Adaptive Supply Chain',
+                          'Resilia',
                           style: GoogleFonts.outfit(
                             fontSize: 30,
                             fontWeight: FontWeight.w800,
@@ -137,8 +137,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                       const SizedBox(height: 8),
                       Text(
                         _isSignUp
-                            ? 'Create your account to get started'
-                            : 'Sign in to manage your supply chains',
+                            ? 'Create your command center for resilient operations'
+                            : 'Sign in to design and monitor adaptive supply chains',
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           color: AppTheme.textSecondary,
@@ -200,7 +200,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                       Container(
                         decoration: BoxDecoration(
                           gradient: AppTheme.glassGradient,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppTheme.borderLight),
                         ),
                         padding: const EdgeInsets.all(24),
@@ -293,7 +293,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                                   fontSize: 14,
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: '••••••••',
+                                  hintText: 'Enter password',
                                   prefixIcon: Icon(Icons.lock_outline,
                                       size: 20, color: AppTheme.textMuted),
                                   suffixIcon: IconButton(

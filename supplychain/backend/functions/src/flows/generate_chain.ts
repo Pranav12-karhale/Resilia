@@ -14,7 +14,8 @@ import {
 } from '../schemas/supply_chain_schema.js';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from "zod";
-import { getVectorStore } from "../utils/vector_store.js";
+import { getFullPlaybook } from "../utils/playbook_context.js";
+import { batchPredictRisks, mapIndustryToCategory, type RiskPrediction } from "../ml/risk_model.js";
 
 // Initialize the LLM
 // We use structured output for each node.
@@ -41,6 +42,7 @@ const GraphState = Annotation.Root({
     edges: any[];
   }>,
   uiConfigs: Annotation<Record<string, any>>,
+  mlRiskScores: Annotation<Record<string, RiskPrediction>>,
   supplyChain: Annotation<SupplyChain>,
 });
 
@@ -77,26 +79,21 @@ Be specific and practical. Think about real-world logistics.`;
 }
 
 // ============================================================
-// Agent 1.5: Risk Anticipator (Using RAG)
+// Agent 1.5: Risk Anticipator (Using Direct Playbook Context)
 // ============================================================
 async function anticipateRisks(state: typeof GraphState.State) {
-  console.log(`   🔮 Anticipating risks via RAG...`);
+  console.log(`   🔮 Anticipating risks via playbook context injection...`);
   const locationContext = state.clientLocation
     ? `\nClient Location: ${state.clientLocation.address} (Lat: ${state.clientLocation.lat}, Lng: ${state.clientLocation.lng})`
     : '';
 
-  // 1. Retrieve relevant playbook items using RAG
-  const vectorStore = await getVectorStore();
-  const query = `Risks for ${state.analysis.industry} industry, producing ${state.analysis.product_type}. ${state.businessIdea}`;
-  const docs = await vectorStore.similaritySearch(query, 3);
-  
-  const retrievedContext = docs.map(d => d.pageContent).join("\n\n");
+  // Direct playbook injection — full playbook text instead of RAG retrieval
+  const playbookContext = getFullPlaybook();
 
-  // 2. Generate anticipated risks based on retrieved context
   const outputSchema = z.object({ anticipated_risks: z.array(AnticipatedRiskSchema) });
   const structuredLlm = llm.withStructuredOutput(outputSchema);
 
-  const prompt = `You are a predictive supply chain risk analyst. Based on the following business analysis and retrieved playbook guidelines, anticipate major supply chain risks BEFORE the supply chain is even built.
+  const prompt = `You are a predictive supply chain risk analyst. Based on the following business analysis and the complete Disruption Playbook, anticipate major supply chain risks BEFORE the supply chain is even built.
 
 Business Idea: "${state.businessIdea}"${locationContext}
 
@@ -105,8 +102,8 @@ Analysis:
 - Product Type: ${state.analysis.product_type}
 - Target Market: ${state.analysis.target_market}
 
-Relevant Playbook Guidelines (RAG Context):
-${retrievedContext}
+COMPLETE DISRUPTION PLAYBOOK:
+${playbookContext}
 
 Identify the top 1-3 macro risks based specifically on the playbook guidelines above.
 Provide specific "regions_to_avoid" and a "recommended_routing_strategy".
@@ -173,6 +170,32 @@ Design the supply chain with:
 }
 
 // ============================================================
+// Agent 2.5: ML Risk Pre-Scoring (NEW — Agentic ML)
+// ============================================================
+async function mlRiskScoring(state: typeof GraphState.State) {
+  console.log(`   🧠 Running ML risk model on ${state.architecture.nodes.length} nodes...`);
+  
+  const industry = mapIndustryToCategory(state.analysis.industry);
+  
+  const inputs = state.architecture.nodes.map(node => ({
+    nodeType: node.type,
+    lat: node.metadata?.coordinates?.lat || node.metadata?.lat || 0,
+    lng: node.metadata?.coordinates?.lng || node.metadata?.lng || 0,
+    industry,
+  }));
+
+  const predictions = await batchPredictRisks(inputs);
+
+  const mlRiskScores: Record<string, RiskPrediction> = {};
+  state.architecture.nodes.forEach((node, i) => {
+    mlRiskScores[node.id] = predictions[i];
+    console.log(`     📊 ${node.name}: geo=${predictions[i].geopolitical_risk}, climate=${predictions[i].climate_risk}, cyber=${predictions[i].cyber_risk}, transport=${predictions[i].transport_risk}`);
+  });
+
+  return { mlRiskScores };
+}
+
+// ============================================================
 // Agent 3: UI Config Generator
 // ============================================================
 async function generateUIConfigs(state: typeof GraphState.State) {
@@ -206,11 +229,11 @@ For EVERY node ID, provide its configuration in the output dictionary.
 }
 
 // ============================================================
-// Agent 4: Assembler
+// Agent 4: Assembler (Enhanced with ML risk scores)
 // ============================================================
 async function assembleChain(state: typeof GraphState.State) {
   console.log(`   ✅ Assembling complete supply chain...`);
-  const { architecture, uiConfigs, analysis, businessIdea } = state;
+  const { architecture, uiConfigs, analysis, businessIdea, mlRiskScores } = state;
 
   const nodesWithUI = architecture.nodes.map(node => {
     let config: any = uiConfigs[node.id] || uiConfigs[`[${node.id}]`];
@@ -221,9 +244,23 @@ async function assembleChain(state: typeof GraphState.State) {
         page_components: [{ type: 'kpi_card_row', args: { cards: [] } }]
       };
     }
+
+    // Enrich node metadata with ML risk predictions
+    const mlRisks = mlRiskScores?.[node.id];
+    const enrichedMetadata = {
+      ...node.metadata,
+      ...(mlRisks ? {
+        geopolitical_risk: mlRisks.geopolitical_risk,
+        climate_risk: mlRisks.climate_risk,
+        cyber_risk: mlRisks.cyber_risk,
+        ml_transport_risk: mlRisks.transport_risk,
+      } : {}),
+    };
+
     return {
       ...node,
       status: 'active' as const,
+      metadata: enrichedMetadata,
       ui_config: config,
     };
   });
@@ -245,18 +282,20 @@ async function assembleChain(state: typeof GraphState.State) {
 }
 
 // ============================================================
-// Build the Graph
+// Build the Graph (Enhanced with ML Risk Scoring agent)
 // ============================================================
 const builder = new StateGraph(GraphState)
   .addNode("analyzeBusiness", analyzeBusiness)
   .addNode("anticipateRisks", anticipateRisks)
   .addNode("architectChain", architectChain)
+  .addNode("mlRiskScoring", mlRiskScoring)
   .addNode("generateUIConfigs", generateUIConfigs)
   .addNode("assembleChain", assembleChain)
   .addEdge(START, "analyzeBusiness")
   .addEdge("analyzeBusiness", "anticipateRisks")
   .addEdge("anticipateRisks", "architectChain")
-  .addEdge("architectChain", "generateUIConfigs")
+  .addEdge("architectChain", "mlRiskScoring")
+  .addEdge("mlRiskScoring", "generateUIConfigs")
   .addEdge("generateUIConfigs", "assembleChain")
   .addEdge("assembleChain", END);
 
