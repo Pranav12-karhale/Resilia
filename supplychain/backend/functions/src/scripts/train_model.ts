@@ -1,24 +1,15 @@
-/**
- * train_model.ts
- * 
- * Script to train and save the ML risk scoring model.
- * Replaces the old `seed_playbook.ts` script.
- * 
- * Usage:
- *   npx tsx src/scripts/train_model.ts
- * 
- * This generates synthetic training data from the disruption playbook's 
- * domain knowledge and trains a TensorFlow.js neural network to predict 
- * risk scores for supply chain nodes.
- */
+//Script to train and save the ML risk scoring model
+
+/* This generates synthetic training data from the disruption playbook's 
+* domain knowledge and trains a TensorFlow.js neural network to predict 
+* risk scores for supply chain nodes.
+*/
 
 import { trainModel, saveModel, predictRisks } from '../ml/risk_model.js';
 
 async function main() {
   console.log(`
-╔══════════════════════════════════════════════════╗
-║  🧠 Resilia ML Risk Model Training              ║
-╚══════════════════════════════════════════════════╝
+Resilia - ML Risk Model Training
 `);
 
   // Train the model

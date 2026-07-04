@@ -11,7 +11,7 @@
  * Each sample maps (nodeType, latitude, longitude, industry) → (geo, climate, cyber, transport) risk scores.
  */
 
-// ── Node type encoding ──────────────────────────────────────────
+//Node type encoding
 export const NODE_TYPES = [
   'supplier', 'manufacturer', 'processor', 'warehouse', 'distributor',
   'retailer', 'quality_control', 'customs', 'logistics', 'packaging',
@@ -41,7 +41,7 @@ export interface TrainingSample {
   transport_risk: number;
 }
 
-// ── Risk Zone Definitions (derived from playbook) ───────────────
+//Risk Zone Definitions (derived from playbook)
 
 interface RiskZone {
   name: string;
@@ -59,7 +59,7 @@ interface RiskZone {
  * inform these geographic risk profiles.
  */
 const RISK_ZONES: RiskZone[] = [
-  // ── HIGH GEOPOLITICAL RISK ──
+  //HIGH GEOPOLITICAL RISK
   // Section 1.1: Wars and Military Conflicts — active conflict zones
   { name: 'Ukraine/Eastern Europe', latRange: [44, 52], lngRange: [22, 40], geopolitical: 9.0, climate: 3.5, cyber: 6.5, transport: 8.0 },
   { name: 'Middle East — Yemen/Iraq', latRange: [12, 37], lngRange: [35, 50], geopolitical: 8.5, climate: 5.0, cyber: 4.0, transport: 6.5 },
@@ -72,7 +72,7 @@ const RISK_ZONES: RiskZone[] = [
   { name: 'Venezuela', latRange: [1, 12], lngRange: [-73, -60], geopolitical: 7.0, climate: 4.0, cyber: 3.5, transport: 6.0 },
   { name: 'Myanmar', latRange: [10, 28], lngRange: [92, 101], geopolitical: 7.5, climate: 5.5, cyber: 3.0, transport: 6.5 },
 
-  // ── HIGH CLIMATE RISK ──
+  //HIGH CLIMATE RISK
   // Section 2.1: Earthquakes, Floods, Hurricanes
   { name: 'Bangladesh/Bay of Bengal', latRange: [20, 27], lngRange: [88, 93], geopolitical: 3.0, climate: 9.0, cyber: 2.5, transport: 6.0 },
   { name: 'Caribbean', latRange: [10, 25], lngRange: [-85, -60], geopolitical: 2.5, climate: 8.5, cyber: 3.0, transport: 5.5 },
@@ -82,7 +82,7 @@ const RISK_ZONES: RiskZone[] = [
   { name: 'Sub-Saharan Africa', latRange: [-10, 15], lngRange: [-18, 40], geopolitical: 5.5, climate: 8.0, cyber: 2.5, transport: 7.0 },
   { name: 'Australia — Outback', latRange: [-35, -20], lngRange: [115, 155], geopolitical: 0.5, climate: 7.0, cyber: 1.5, transport: 4.0 },
 
-  // ── HIGH TRANSPORT RISK ──
+  //HIGH TRANSPORT RISK
   // Section 3.1-3.2: Port Congestion, Canal Blockages
   { name: 'Suez Canal Zone', latRange: [29, 32], lngRange: [32, 34], geopolitical: 5.0, climate: 3.0, cyber: 3.0, transport: 9.0 },
   { name: 'Panama Canal Zone', latRange: [7, 10], lngRange: [-80, -79], geopolitical: 2.0, climate: 4.5, cyber: 2.5, transport: 8.5 },
@@ -90,11 +90,11 @@ const RISK_ZONES: RiskZone[] = [
   // Section 3.5: Rail/Road Infrastructure
   { name: 'Central Asia', latRange: [35, 50], lngRange: [50, 80], geopolitical: 5.0, climate: 4.5, cyber: 3.5, transport: 7.5 },
 
-  // ── HIGH CYBER RISK ──
-  // Section 5.1-5.5: Ransomware, IT failures, chip shortages
+  //HIGH CYBER RISK
+  //Section 5.1-5.5: Ransomware, IT failures, chip shortages
   { name: 'Taiwan — Semiconductor Hub', latRange: [22, 25], lngRange: [120, 122], geopolitical: 6.5, climate: 4.5, cyber: 7.5, transport: 3.0 },
 
-  // ── LOW RISK ZONES (stable, developed economies) ──
+  //LOW RISK ZONES (stable, developed economies)
   { name: 'Western Europe', latRange: [43, 60], lngRange: [-10, 15], geopolitical: 1.0, climate: 2.5, cyber: 2.0, transport: 1.5 },
   { name: 'Scandinavia', latRange: [55, 71], lngRange: [5, 30], geopolitical: 0.5, climate: 2.0, cyber: 1.0, transport: 2.0 },
   { name: 'USA — Midwest', latRange: [36, 48], lngRange: [-100, -80], geopolitical: 0.5, climate: 3.5, cyber: 2.0, transport: 1.5 },
@@ -105,7 +105,7 @@ const RISK_ZONES: RiskZone[] = [
   { name: 'Singapore', latRange: [1, 2], lngRange: [103, 104], geopolitical: 0.5, climate: 2.5, cyber: 1.0, transport: 1.5 },
   { name: 'New Zealand', latRange: [-47, -34], lngRange: [166, 179], geopolitical: 0.5, climate: 3.5, cyber: 1.0, transport: 3.5 },
 
-  // ── MODERATE RISK ZONES ──
+  //MODERATE RISK ZONES
   { name: 'China — Eastern Seaboard', latRange: [22, 40], lngRange: [110, 123], geopolitical: 4.5, climate: 4.0, cyber: 5.0, transport: 3.0 },
   { name: 'India', latRange: [8, 35], lngRange: [68, 90], geopolitical: 3.5, climate: 6.0, cyber: 4.0, transport: 5.0 },
   { name: 'Brazil', latRange: [-33, 5], lngRange: [-74, -35], geopolitical: 2.5, climate: 5.0, cyber: 3.0, transport: 4.5 },
@@ -119,43 +119,43 @@ const RISK_ZONES: RiskZone[] = [
   { name: 'Egypt', latRange: [22, 31], lngRange: [25, 35], geopolitical: 4.5, climate: 4.0, cyber: 3.5, transport: 4.0 },
 ];
 
-// ── Industry Risk Modifiers (from playbook sections 4, 5, 7, 8) ──
+//Industry Risk Modifiers (from playbook sections 4, 5, 7, 8)
 const INDUSTRY_RISK_MODIFIERS: Record<IndustryKey, { geo: number; climate: number; cyber: number; transport: number }> = {
-  agriculture:      { geo: 0.0, climate: 2.0, cyber: -1.0, transport: 0.5 },
-  electronics:      { geo: 1.0, climate: 0.0, cyber: 3.0, transport: 1.0 },
-  automotive:       { geo: 0.5, climate: 0.0, cyber: 1.5, transport: 1.5 },
-  pharmaceutical:   { geo: 1.0, climate: 1.0, cyber: 2.0, transport: 1.5 },
-  textiles:         { geo: 0.5, climate: 0.5, cyber: -0.5, transport: 0.5 },
-  food_beverage:    { geo: 0.0, climate: 2.5, cyber: -0.5, transport: 1.0 },
-  chemicals:        { geo: 1.0, climate: 1.0, cyber: 1.0, transport: 2.0 },
-  energy:           { geo: 2.0, climate: 1.5, cyber: 2.5, transport: 1.5 },
-  mining:           { geo: 1.5, climate: 1.5, cyber: 0.5, transport: 2.0 },
-  consumer_goods:   { geo: 0.0, climate: 0.0, cyber: 0.5, transport: 0.5 },
-  aerospace:        { geo: 2.0, climate: 0.5, cyber: 3.0, transport: 1.0 },
-  construction:     { geo: 0.5, climate: 1.0, cyber: 0.0, transport: 1.5 },
-  general:          { geo: 0.0, climate: 0.0, cyber: 0.0, transport: 0.0 },
+  agriculture: { geo: 0.0, climate: 2.0, cyber: -1.0, transport: 0.5 },
+  electronics: { geo: 1.0, climate: 0.0, cyber: 3.0, transport: 1.0 },
+  automotive: { geo: 0.5, climate: 0.0, cyber: 1.5, transport: 1.5 },
+  pharmaceutical: { geo: 1.0, climate: 1.0, cyber: 2.0, transport: 1.5 },
+  textiles: { geo: 0.5, climate: 0.5, cyber: -0.5, transport: 0.5 },
+  food_beverage: { geo: 0.0, climate: 2.5, cyber: -0.5, transport: 1.0 },
+  chemicals: { geo: 1.0, climate: 1.0, cyber: 1.0, transport: 2.0 },
+  energy: { geo: 2.0, climate: 1.5, cyber: 2.5, transport: 1.5 },
+  mining: { geo: 1.5, climate: 1.5, cyber: 0.5, transport: 2.0 },
+  consumer_goods: { geo: 0.0, climate: 0.0, cyber: 0.5, transport: 0.5 },
+  aerospace: { geo: 2.0, climate: 0.5, cyber: 3.0, transport: 1.0 },
+  construction: { geo: 0.5, climate: 1.0, cyber: 0.0, transport: 1.5 },
+  general: { geo: 0.0, climate: 0.0, cyber: 0.0, transport: 0.0 },
 };
 
-// ── Node Type Risk Modifiers (operational risk by node role) ──
+//Node Type Risk Modifiers (operational risk by node role)
 const NODE_TYPE_RISK_MODIFIERS: Record<NodeTypeKey, { geo: number; climate: number; cyber: number; transport: number }> = {
-  supplier:             { geo: 1.0, climate: 0.5, cyber: 0.0, transport: 0.0 },
-  manufacturer:         { geo: 0.5, climate: 0.5, cyber: 1.0, transport: 0.0 },
-  processor:            { geo: 0.5, climate: 0.5, cyber: 0.5, transport: 0.0 },
-  warehouse:            { geo: 0.0, climate: 1.0, cyber: 0.5, transport: 0.5 },
-  distributor:          { geo: 0.0, climate: 0.0, cyber: 0.5, transport: 1.5 },
-  retailer:             { geo: 0.0, climate: 0.5, cyber: 1.0, transport: 0.5 },
-  quality_control:      { geo: 0.0, climate: 0.0, cyber: 0.5, transport: 0.0 },
-  customs:              { geo: 1.5, climate: 0.0, cyber: 0.5, transport: 1.0 },
-  logistics:            { geo: 0.5, climate: 0.5, cyber: 1.0, transport: 2.0 },
-  packaging:            { geo: 0.0, climate: 0.5, cyber: 0.0, transport: 0.5 },
-  cold_storage:         { geo: 0.0, climate: 1.5, cyber: 1.0, transport: 0.5 },
-  fulfillment_center:   { geo: 0.0, climate: 0.5, cyber: 1.5, transport: 1.0 },
-  last_mile_delivery:   { geo: 0.0, climate: 1.0, cyber: 0.5, transport: 2.0 },
-  returns_center:       { geo: 0.0, climate: 0.0, cyber: 0.5, transport: 0.5 },
-  raw_material_source:  { geo: 1.5, climate: 2.0, cyber: -0.5, transport: 1.0 },
+  supplier: { geo: 1.0, climate: 0.5, cyber: 0.0, transport: 0.0 },
+  manufacturer: { geo: 0.5, climate: 0.5, cyber: 1.0, transport: 0.0 },
+  processor: { geo: 0.5, climate: 0.5, cyber: 0.5, transport: 0.0 },
+  warehouse: { geo: 0.0, climate: 1.0, cyber: 0.5, transport: 0.5 },
+  distributor: { geo: 0.0, climate: 0.0, cyber: 0.5, transport: 1.5 },
+  retailer: { geo: 0.0, climate: 0.5, cyber: 1.0, transport: 0.5 },
+  quality_control: { geo: 0.0, climate: 0.0, cyber: 0.5, transport: 0.0 },
+  customs: { geo: 1.5, climate: 0.0, cyber: 0.5, transport: 1.0 },
+  logistics: { geo: 0.5, climate: 0.5, cyber: 1.0, transport: 2.0 },
+  packaging: { geo: 0.0, climate: 0.5, cyber: 0.0, transport: 0.5 },
+  cold_storage: { geo: 0.0, climate: 1.5, cyber: 1.0, transport: 0.5 },
+  fulfillment_center: { geo: 0.0, climate: 0.5, cyber: 1.5, transport: 1.0 },
+  last_mile_delivery: { geo: 0.0, climate: 1.0, cyber: 0.5, transport: 2.0 },
+  returns_center: { geo: 0.0, climate: 0.0, cyber: 0.5, transport: 0.5 },
+  raw_material_source: { geo: 1.5, climate: 2.0, cyber: -0.5, transport: 1.0 },
 };
 
-// ── Helper Functions ─────────────────────────────────────────────
+//Helper Functions
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -176,23 +176,22 @@ function randomInRange(min: number, max: number): number {
 function findZone(lat: number, lng: number): RiskZone | null {
   for (const zone of RISK_ZONES) {
     if (lat >= zone.latRange[0] && lat <= zone.latRange[1] &&
-        lng >= zone.lngRange[0] && lng <= zone.lngRange[1]) {
+      lng >= zone.lngRange[0] && lng <= zone.lngRange[1]) {
       return zone;
     }
   }
   return null;
 }
 
-// ── Main Data Generator ─────────────────────────────────────────
+//Main Data Generator
 
-/**
- * Generates synthetic training data for the risk prediction model.
- * Each sample combines:
- *   1. Base risk from geographic zone (playbook geopolitical/climate mapping)
- *   2. Industry risk modifier (playbook economic/regulatory context)
- *   3. Node type risk modifier (operational risk)
- *   4. Gaussian noise for regularization
- */
+/* Generates synthetic training data for the risk prediction model.
+* Each sample combines:
+*   1. Base risk from geographic zone (playbook geopolitical/climate mapping)
+*   2. Industry risk modifier (playbook economic/regulatory context)
+*   3. Node type risk modifier (operational risk)
+*   4. Gaussian noise for regularization
+*/
 export function generateTrainingData(sampleCount: number = 600): TrainingSample[] {
   const samples: TrainingSample[] = [];
   const noiseStddev = 0.6;
@@ -261,9 +260,7 @@ export function generateTrainingData(sampleCount: number = 600): TrainingSample[
   return samples;
 }
 
-/**
- * Encodes a node type as a one-hot vector.
- */
+//Encodes a node type as a one-hot vector.
 export function encodeNodeType(nodeType: string): number[] {
   const vector = new Array(NODE_TYPES.length).fill(0);
   const idx = NODE_TYPES.indexOf(nodeType as NodeTypeKey);
@@ -271,9 +268,7 @@ export function encodeNodeType(nodeType: string): number[] {
   return vector;
 }
 
-/**
- * Encodes an industry category as a one-hot vector.
- */
+//Encodes an industry category as a one-hot vector.
 export function encodeIndustry(industry: string): number[] {
   const vector = new Array(INDUSTRY_CATEGORIES.length).fill(0);
   const idx = INDUSTRY_CATEGORIES.indexOf(industry as IndustryKey);
@@ -281,24 +276,22 @@ export function encodeIndustry(industry: string): number[] {
   return vector;
 }
 
-/**
- * Normalizes latitude to [-1, 1] range.
- */
+//Normalizes latitude to [-1, 1] range.
 export function normalizeLat(lat: number): number {
   return lat / 90;
 }
 
-/**
- * Normalizes longitude to [-1, 1] range.
- */
+
+//Normalizes longitude to [-1, 1] range.
+
 export function normalizeLng(lng: number): number {
   return lng / 180;
 }
 
-/**
- * Converts a training sample into a feature vector for the model.
- * Feature vector layout: [nodeType (15), lat (1), lng (1), industry (13)] = 30 features
- */
+
+//Converts a training sample into a feature vector for the model.
+//Feature vector layout: [nodeType (15), lat (1), lng (1), industry (13)] = 30 features
+
 export function sampleToFeatures(sample: TrainingSample): number[] {
   return [
     ...encodeNodeType(sample.nodeType),
@@ -308,10 +301,9 @@ export function sampleToFeatures(sample: TrainingSample): number[] {
   ];
 }
 
-/**
- * Converts a training sample into a label vector for the model.
- * Label vector: [geopolitical, climate, cyber, transport] normalized to [0, 1]
- */
+//Converts a training sample into a label vector for the model.
+//Label vector: [geopolitical, climate, cyber, transport] normalized to [0, 1]
+
 export function sampleToLabels(sample: TrainingSample): number[] {
   return [
     sample.geopolitical_risk / 10,
@@ -321,7 +313,5 @@ export function sampleToLabels(sample: TrainingSample): number[] {
   ];
 }
 
-/**
- * Total number of input features.
- */
+//Total number of input features.
 export const FEATURE_COUNT = NODE_TYPES.length + 2 + INDUSTRY_CATEGORIES.length; // 15 + 2 + 13 = 30

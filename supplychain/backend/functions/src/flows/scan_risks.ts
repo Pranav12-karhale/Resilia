@@ -17,12 +17,12 @@ const llm = new ChatGoogleGenerativeAI({
 export async function scanSupplyChainRisksFlow(input: {
   supplyChain: SupplyChain;
 }): Promise<{ results: RiskScanResult[] }> {
-  
-  // ── Step 1: ML Model Inference ──────────────────────────────
+
+  //Step 1: ML Model Inference
   console.log(`   🧠 Running ML risk model on ${input.supplyChain.nodes.length} nodes...`);
-  
+
   const industry = mapIndustryToCategory(input.supplyChain.business_idea || 'general');
-  
+
   const mlInputs = input.supplyChain.nodes.map(n => ({
     nodeType: n.type,
     lat: n.metadata?.coordinates?.lat || 0,
@@ -38,7 +38,7 @@ export async function scanSupplyChainRisksFlow(input: {
     return `  - ${n.id} "${n.name}": ML Predicted → Geo=${p.geopolitical_risk}, Climate=${p.climate_risk}, Cyber=${p.cyber_risk}, Transport=${p.transport_risk}`;
   }).join('\n');
 
-  // ── Step 2: LLM Agent Risk Assessment ───────────────────────
+  //Step 2: LLM Agent Risk Assessment
   const nodesSummary = input.supplyChain.nodes.map(n => {
     const loc = n.metadata?.location || 'Unknown';
     const coords = n.metadata?.coordinates
@@ -83,7 +83,7 @@ IMPORTANT INSTRUCTIONS:
   console.log(`   🔍 Scanning supply chain risks (hybrid ML + LLM)...`);
   const llmResponse = await structuredLlm.invoke(prompt);
 
-  // ── Step 3: Blend ML and LLM Results ────────────────────────
+  //Step 3: Blend ML and LLM Results
   // Weighted average: 40% ML model, 60% LLM assessment
   const blendedResults = llmResponse.results.map((llmResult, idx) => {
     const mlPred = mlPredictions[idx];

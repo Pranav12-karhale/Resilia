@@ -9,6 +9,7 @@
     "train-model": "tsx src/scripts/train_model.ts"
   },
   "dependencies": {
+    "@genkit-ai/google-genai": "^1.39.0",
     "@langchain/core": "^0.3.0",
     "@langchain/google-genai": "^0.1.0",
     "@langchain/langgraph": "^0.2.0",
@@ -17,6 +18,7 @@
     "dotenv": "^17.4.0",
     "express": "^4.21.0",
     "firebase-admin": "^13.7.0",
+    "genkit": "^1.39.0",
     "langsmith": "^0.2.0",
     "morgan": "^1.10.0",
     "uuid": "^11.0.0",

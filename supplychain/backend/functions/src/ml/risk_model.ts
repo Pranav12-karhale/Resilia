@@ -1,23 +1,18 @@
-/**
- * risk_model.ts
- * 
- * TensorFlow.js-based ML model for predicting supply chain node risk scores.
- * 
- * Architecture:
- *   Input (30 features) → Dense(64, relu) → Dropout(0.2) → Dense(32, relu) → Dense(4, sigmoid)
- * 
- * Input Features (30):
- *   - Node type one-hot encoding (15 categories)
- *   - Latitude normalized [-1, 1] (1)
- *   - Longitude normalized [-1, 1] (1)
- *   - Industry one-hot encoding (13 categories)
- * 
- * Output (4 risk scores, 0-1 scaled, multiply by 10 for 0-10 range):
- *   - Geopolitical risk
- *   - Climate risk
- *   - Cyber risk
- *   - Transport risk
- */
+// Architecture:Input (30 features) → Dense(64, relu) → Dropout(0.2) → Dense(32, relu) → Dense(4, sigmoid)
+
+/* Input Features (30):
+*   - Node type one-hot encoding (15 categories)
+*   - Latitude normalized [-1, 1] (1)
+*   - Longitude normalized [-1, 1] (1)
+*   - Industry one-hot encoding (13 categories)
+* /
+ 
+/* Output (4 risk scores, 0-1 scaled, multiply by 10 for 0-10 range):
+*   - Geopolitical risk
+*   - Climate risk
+*   - Cyber risk
+*   - Transport risk
+*/
 
 import * as tf from '@tensorflow/tfjs';
 import {
@@ -51,13 +46,11 @@ export interface RiskPrediction {
 
 let cachedModel: tf.LayersModel | null = null;
 
-/**
- * Creates the neural network model architecture.
- */
+//model arch
 export function createModel(): tf.LayersModel {
   const model = tf.sequential();
 
-  // Input → Hidden Layer 1 (64 units, ReLU)
+  //Input to Layer 1 (64 units, ReLU)
   model.add(tf.layers.dense({
     inputShape: [FEATURE_COUNT],
     units: 64,
@@ -65,17 +58,17 @@ export function createModel(): tf.LayersModel {
     kernelInitializer: 'heNormal',
   }));
 
-  // Dropout for regularization
+  // Dropout for reducing overfitting
   model.add(tf.layers.dropout({ rate: 0.2 }));
 
-  // Hidden Layer 2 (32 units, ReLU)
+  //Layer 2 (32 units, ReLU)
   model.add(tf.layers.dense({
     units: 32,
     activation: 'relu',
     kernelInitializer: 'heNormal',
   }));
 
-  // Output Layer (4 risk scores, sigmoid for 0-1 range)
+  //Output Layer (4 risk scores, sigmoid for 0-1 range)
   model.add(tf.layers.dense({
     units: 4,
     activation: 'sigmoid',
@@ -90,10 +83,8 @@ export function createModel(): tf.LayersModel {
   return model;
 }
 
-/**
- * Trains the risk model on synthetic data.
- * Returns the trained model and training history.
- */
+//Training
+//returns the trained model and training history.
 export async function trainModel(options: {
   sampleCount?: number;
   epochs?: number;
@@ -112,7 +103,6 @@ export async function trainModel(options: {
   if (verbose) console.log(`\n📊 Generating ${sampleCount} training samples...`);
   const samples = generateTrainingData(sampleCount);
 
-  // Convert to tensors
   const features = samples.map(sampleToFeatures);
   const labels = samples.map(sampleToLabels);
 
@@ -141,21 +131,18 @@ export async function trainModel(options: {
     } : undefined,
   });
 
-  // Cleanup tensors
+  //clean
   xs.dispose();
   ys.dispose();
 
-  // Cache the model
+  //cache
   cachedModel = model;
 
   return { model, history };
 }
 
-/**
- * Custom IOHandler to save a TF.js model to the local filesystem.
- * Required because @tensorflow/tfjs (pure JS) doesn't register file:// handlers
- * — those are only available in @tensorflow/tfjs-node.
- */
+//Custom IOHandler to save a TF.js model locally
+//required because @tensorflow/tfjs (pure JS) doesn't register file:// handlers
 function createFileSaveHandler(dirPath: string): tf.io.IOHandler {
   return {
     async save(modelArtifacts: tf.io.ModelArtifacts): Promise<tf.io.SaveResult> {
@@ -163,7 +150,7 @@ function createFileSaveHandler(dirPath: string): tf.io.IOHandler {
         fs.mkdirSync(dirPath, { recursive: true });
       }
 
-      // Build the model topology JSON
+      //model topo
       const modelJSON: any = {
         modelTopology: modelArtifacts.modelTopology,
         format: modelArtifacts.format,
@@ -179,13 +166,13 @@ function createFileSaveHandler(dirPath: string): tf.io.IOHandler {
         modelJSON.trainingConfig = modelArtifacts.trainingConfig;
       }
 
-      // Write model.json
+      //writing model.json
       fs.writeFileSync(
         path.join(dirPath, 'model.json'),
         JSON.stringify(modelJSON, null, 2)
       );
 
-      // Write binary weights
+      //write weights
       if (modelArtifacts.weightData) {
         const weightData = modelArtifacts.weightData instanceof ArrayBuffer
           ? Buffer.from(modelArtifacts.weightData)
@@ -203,9 +190,8 @@ function createFileSaveHandler(dirPath: string): tf.io.IOHandler {
   };
 }
 
-/**
- * Custom IOHandler to load a TF.js model from the local filesystem.
- */
+
+//Custom IOHandler to load a TF.js model from the local filesystem.
 function createFileLoadHandler(modelJsonPath: string): tf.io.IOHandler {
   return {
     async load(): Promise<tf.io.ModelArtifacts> {
@@ -224,7 +210,7 @@ function createFileLoadHandler(modelJsonPath: string): tf.io.IOHandler {
         artifacts.trainingConfig = modelJSON.trainingConfig;
       }
 
-      // Read binary weights
+      //read binary weights
       if (modelJSON.weightsManifest?.[0]?.paths) {
         const weightsPath = path.join(dirPath, modelJSON.weightsManifest[0].paths[0]);
         if (fs.existsSync(weightsPath)) {
@@ -241,18 +227,15 @@ function createFileLoadHandler(modelJsonPath: string): tf.io.IOHandler {
   };
 }
 
-/**
- * Saves the trained model to disk.
- */
+//save to disk-traned model
 export async function saveModel(model: tf.LayersModel): Promise<void> {
   await model.save(createFileSaveHandler(MODEL_DIR));
   console.log(`✅ Model saved to ${MODEL_DIR}`);
 }
 
-/**
- * Loads the trained model from disk.
- * Falls back to creating and training a new model if no saved model exists.
- */
+
+//loads the model from disk
+//falls back to creating and training a new model if no saved model exists
 export async function loadModel(): Promise<tf.LayersModel> {
   if (cachedModel) return cachedModel;
 
@@ -268,12 +251,12 @@ export async function loadModel(): Promise<tf.LayersModel> {
     }
   }
 
-  // No saved model found — train a new one in-memory
+  // if no saved model found then train a new one in-memory
   console.log('🧠 No saved model found. Training new risk model in-memory...');
   const { model } = await trainModel({ verbose: false, epochs: 30, sampleCount: 400 });
   cachedModel = model;
 
-  // Try to save for next time
+  //save next time
   try {
     await saveModel(model);
   } catch (err: any) {
@@ -283,9 +266,7 @@ export async function loadModel(): Promise<tf.LayersModel> {
   return cachedModel;
 }
 
-/**
- * Predicts risk scores for a single supply chain node.
- */
+//predict risk scores for a single node of supply chain
 export async function predictRisks(input: {
   nodeType: string;
   lat: number;
@@ -294,7 +275,7 @@ export async function predictRisks(input: {
 }): Promise<RiskPrediction> {
   const model = await loadModel();
 
-  // Build feature vector
+  //vector - featues
   const features = [
     ...encodeNodeType(input.nodeType),
     normalizeLat(input.lat),
@@ -306,7 +287,7 @@ export async function predictRisks(input: {
   const prediction = model.predict(inputTensor) as tf.Tensor;
   const values = await prediction.data();
 
-  // Cleanup
+  //clean
   inputTensor.dispose();
   prediction.dispose();
 
@@ -318,10 +299,8 @@ export async function predictRisks(input: {
   };
 }
 
-/**
- * Batch-predicts risk scores for multiple nodes.
- * More efficient than calling predictRisks() in a loop.
- */
+//Batch-predicts risk scores for multiple nodes.
+//More efficient than calling predictRisks() in a loop.
 export async function batchPredictRisks(inputs: Array<{
   nodeType: string;
   lat: number;
@@ -343,7 +322,7 @@ export async function batchPredictRisks(inputs: Array<{
   const prediction = model.predict(inputTensor) as tf.Tensor;
   const values = await prediction.data();
 
-  // Cleanup
+  //clean
   inputTensor.dispose();
   prediction.dispose();
 
@@ -360,10 +339,8 @@ export async function batchPredictRisks(inputs: Array<{
   return results;
 }
 
-/**
- * Maps common industry strings to our model's industry categories.
- * This is a fuzzy mapper for LLM-generated industry names.
- */
+//maps common industry strings to our model's industry categories
+//This is a fuzzy mapper for LLM-generated industry names
 export function mapIndustryToCategory(industry: string): string {
   const lower = industry.toLowerCase();
 

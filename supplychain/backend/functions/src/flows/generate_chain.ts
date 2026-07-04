@@ -24,9 +24,7 @@ const llm = new ChatGoogleGenerativeAI({
   temperature: 0.2,
 });
 
-// ============================================================
 // LangGraph State Definition
-// ============================================================
 const GraphState = Annotation.Root({
   businessIdea: Annotation<string>,
   clientLocation: Annotation<{ lat: number; lng: number; address: string } | undefined>,
@@ -34,7 +32,7 @@ const GraphState = Annotation.Root({
   destination: Annotation<string | undefined>,
   chainScope: Annotation<string | undefined>,
   displayStrategy: Annotation<string | undefined>,
-  
+
   analysis: Annotation<BusinessAnalysis>,
   anticipatedRisks: Annotation<AnticipatedRisk[]>,
   architecture: Annotation<{
@@ -46,12 +44,10 @@ const GraphState = Annotation.Root({
   supplyChain: Annotation<SupplyChain>,
 });
 
-// ============================================================
 // Agent 1: Business Analyzer
-// ============================================================
 async function analyzeBusiness(state: typeof GraphState.State) {
   const structuredLlm = llm.withStructuredOutput(BusinessAnalysisSchema);
-  
+
   const locationContext = state.clientLocation
     ? `\nClient Location: ${state.clientLocation.address} (Lat: ${state.clientLocation.lat}, Lng: ${state.clientLocation.lng})\nStrict Local Sourcing: ${state.strictLocal ? 'YES - This must be a hyper-local business.' : 'No'}`
     : '';
@@ -74,13 +70,11 @@ Be specific and practical. Think about real-world logistics.`;
 
   console.log(`   🧠 Analyzing business: ${state.businessIdea}...`);
   const analysis = await structuredLlm.invoke(prompt);
-  
+
   return { analysis };
 }
 
-// ============================================================
 // Agent 1.5: Risk Anticipator (Using Direct Playbook Context)
-// ============================================================
 async function anticipateRisks(state: typeof GraphState.State) {
   console.log(`   🔮 Anticipating risks via playbook context injection...`);
   const locationContext = state.clientLocation
@@ -113,9 +107,7 @@ If the business is strictly local or hyper-simple, you may return an empty list 
   return { anticipatedRisks: result.anticipated_risks };
 }
 
-// ============================================================
 // Agent 2: Chain Architect
-// ============================================================
 async function architectChain(state: typeof GraphState.State) {
   console.log(`   🏗️ Architecting chain nodes and edges...`);
   const outputSchema = z.object({
@@ -169,14 +161,12 @@ Design the supply chain with:
   return { architecture };
 }
 
-// ============================================================
 // Agent 2.5: ML Risk Pre-Scoring (NEW — Agentic ML)
-// ============================================================
 async function mlRiskScoring(state: typeof GraphState.State) {
   console.log(`   🧠 Running ML risk model on ${state.architecture.nodes.length} nodes...`);
-  
+
   const industry = mapIndustryToCategory(state.analysis.industry);
-  
+
   const inputs = state.architecture.nodes.map(node => ({
     nodeType: node.type,
     lat: node.metadata?.coordinates?.lat || node.metadata?.lat || 0,
@@ -195,9 +185,7 @@ async function mlRiskScoring(state: typeof GraphState.State) {
   return { mlRiskScores };
 }
 
-// ============================================================
 // Agent 3: UI Config Generator
-// ============================================================
 async function generateUIConfigs(state: typeof GraphState.State) {
   console.log(`   🎨 Generating UI configurations for ${state.architecture.nodes.length} nodes...`);
   const outputSchema = z.object({
@@ -228,9 +216,7 @@ For EVERY node ID, provide its configuration in the output dictionary.
   return { uiConfigs: response.configs };
 }
 
-// ============================================================
 // Agent 4: Assembler (Enhanced with ML risk scores)
-// ============================================================
 async function assembleChain(state: typeof GraphState.State) {
   console.log(`   ✅ Assembling complete supply chain...`);
   const { architecture, uiConfigs, analysis, businessIdea, mlRiskScores } = state;
@@ -281,9 +267,7 @@ async function assembleChain(state: typeof GraphState.State) {
   return { supplyChain };
 }
 
-// ============================================================
 // Build the Graph (Enhanced with ML Risk Scoring agent)
-// ============================================================
 const builder = new StateGraph(GraphState)
   .addNode("analyzeBusiness", analyzeBusiness)
   .addNode("anticipateRisks", anticipateRisks)
