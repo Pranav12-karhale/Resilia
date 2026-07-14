@@ -326,7 +326,7 @@ erDiagram
     }
 ```
 
-## Suggested Project Structure
+## Project Structure
 
 ```text
 resilia/
