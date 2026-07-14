@@ -1,120 +1,357 @@
-<div align="center">
-  <h1>🌐 Resilia: Adaptive Supply Chain Platform</h1>
-  <p>
-    <b>An AI-powered, dynamic supply chain management application designed to map out, analyze, and self-heal complex global logistics networks in real-time.</b>
-  </p>
-  
-  [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
-  [![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
-  [![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://langchain.com/)
-  [![TensorFlow.js](https://img.shields.io/badge/TensorFlow.js-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://js.tensorflow.org/)
-  [![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
-  [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-</div>
+# Adaptive Supply Chain Platform (Resilia)
 
-<br/>
+![AI orchestration](https://img.shields.io/badge/AI-LangGraph%20%2B%20LangChain-2f80ed)
+![Realtime](https://img.shields.io/badge/realtime-Firestore%20%2B%20SSE-2f8f62)
+![Risk model](https://img.shields.io/badge/risk-TensorFlow.js-d99028)
+![Client](https://img.shields.io/badge/client-Flutter-53677f)
 
-## 📖 Overview
+Resilia is an AI-powered dynamic supply chain platform for mapping, analyzing, and self-healing complex logistics networks. It combines a Flutter client, Firestore realtime synchronization, LangGraph multi-agent orchestration, and a TensorFlow.js risk model to turn a business brief into an inspectable supply chain graph with predictive disruption intelligence.
 
-**Resilia** transforms how businesses manage and mitigate supply chain risks. By leveraging cutting-edge Agentic AI (LangGraph + LangChain) and an embedded ML Risk Model (TensorFlow.js), the platform intelligently generates feasible logistics networks from simple business ideas. It continuously scores geopolitical, climate, cyber, and transport risks, and autonomously recommends mitigation strategies using RAG (Retrieval-Augmented Generation) on customized disruption playbooks.
+![Animated adaptive flow](assets/resilia-flow.svg)
 
-## ✨ Key Features
+## Explore
 
-- 🧠 **Agentic AI Pipeline:** 6 specialized AI agents orchestrate the design, risk anticipation, and UI generation for the supply chain.
-- 🔮 **Predictive Risk Modeling:** Custom TensorFlow.js neural network trained on supply chain data to forecast risks globally.
-- ⚡ **Real-Time Synchronization:** Firebase Firestore and Server-Sent Events (SSE) provide instant UI updates across all connected devices.
-- 🗺️ **Dynamic GIS Mapping:** Interactive map interface built with `flutter_map` offering live location tracking and risk zone visualization.
-- 🛡️ **Self-Healing Logistics:** Disruption playbooks via a Vector Database provide intelligent, context-aware alternative routing.
+- [System overview](#system-overview)
+- [Interactive workflows](#interactive-workflows)
+- [Agentic ML pipeline](#agentic-ml-pipeline)
+- [Risk intelligence engine](#risk-intelligence-engine)
+- [Realtime collaboration loop](#realtime-collaboration-loop)
+- [Tech stack](#tech-stack)
+- [API surface](#api-surface)
+- [Data model](#data-model)
 
-## 🏗 Architecture
-
-The platform operates on a decoupled, serverless-ready architecture optimized for real-time reactivity and AI inference.
+## System Overview
 
 ```mermaid
-graph TD
-    Client[Flutter Web & Mobile] -->|Real-time Streams| Firestore[(Firebase Firestore)]
-    Client -->|API Requests| API[Express.js API Gateway]
-    
-    API --> Agentic[LangGraph Multi-Agent Pipeline]
-    
-    subgraph Agentic Pipeline
-        Agent1[Business Analyzer] --> Agent1_5[Risk Anticipator]
-        Agent1_5 --> Agent2[Chain Architect]
-        Agent2 --> Agent2_5[ML Risk Scorer - TF.js]
-        Agent2_5 --> Agent3[UI Config Generator]
-        Agent3 --> Agent4[Assembler]
+flowchart TD
+    User["User"] --> Flutter["Flutter App<br/>maps, dashboards, controls"]
+    Flutter -->|HTTP POST| API["Express API<br/>secure orchestration layer"]
+    Flutter <-->|Firestore snapshots| Firestore[("Cloud Firestore<br/>chains, nodes, edges, risks")]
+    API -->|stream node states| SSE["Server-Sent Events"]
+    SSE --> Flutter
+    API --> LangGraph["LangGraph Workflow"]
+    LangGraph --> Agents["6 Specialized Agents"]
+    Agents --> RiskModel["TensorFlow.js<br/>Risk Model"]
+    Agents --> Playbook["Disruption Playbook<br/>40+ risk types"]
+    Agents --> Firestore
+    RiskModel --> Agents
+    Playbook --> Agents
+
+    classDef client fill:#e7f2ff,stroke:#2f80ed,color:#162033,stroke-width:2px
+    classDef api fill:#f0eaff,stroke:#7a4ed9,color:#162033,stroke-width:2px
+    classDef ai fill:#fff3df,stroke:#d99028,color:#162033,stroke-width:2px
+    classDef data fill:#e8f7ef,stroke:#2f8f62,color:#162033,stroke-width:2px
+
+    class User,Flutter client
+    class API,SSE api
+    class LangGraph,Agents,RiskModel,Playbook ai
+    class Firestore data
+```
+
+Resilia uses a decoupled realtime architecture:
+
+| Layer | Responsibility | Key Technologies |
+|---|---|---|
+| Client | User interaction, maps, graph exploration, live AI progress | Flutter, Provider, `flutter_map`, `fl_chart` |
+| API | Secure orchestration, streamed workflow execution, risk and mitigation endpoints | Node.js, TypeScript, Express.js, SSE |
+| Intelligence | Multi-agent reasoning, disruption analysis, ML scoring, route planning | LangGraph, LangChain, TensorFlow.js |
+| Data | Shared supply chain graph state and risk metadata | Cloud Firestore |
+| Observability | AI traces and request logs | LangSmith, Winston, Morgan |
+
+## Interactive Workflows
+
+<details open>
+<summary><strong>Workflow 1: Generate a supply chain</strong></summary>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant C as Flutter Client
+    participant A as Express API
+    participant G as LangGraph
+    participant F as Firestore
+
+    U->>C: Submit business idea
+    C->>A: POST /api/generate-stream
+    A->>G: Start agent graph
+    loop Stream every agent state
+        G-->>A: Node started / completed
+        A-->>C: SSE progress event
     end
-    
-    Agentic -->|Embeddings & RAG| VectorDB[(Chroma DB)]
-    Agentic -->|Writes Graph Data| Firestore
+    G->>F: Persist generated nodes and edges
+    F-->>C: Snapshot update
+    C-->>U: Render live supply chain map
 ```
 
-## 🛠 Tech Stack
+</details>
 
-| Category | Technology |
-| :--- | :--- |
-| **Frontend** | Flutter (v3.5.0+), Provider, flutter_map, fl_chart |
-| **Backend** | Node.js (TypeScript), Express.js, Server-Sent Events (SSE) |
-| **AI / ML** | LangGraph, LangChain, TensorFlow.js, Gemini LLM |
-| **Database** | Cloud Firestore (Real-time NoSQL), Chroma DB (Vector Search) |
-| **DevOps & Cloud** | Docker, AWS Amplify (Frontend CI/CD), GCP Cloud Run (Backend) |
+<details>
+<summary><strong>Workflow 2: Scan risk across the chain</strong></summary>
 
-## 🧠 ML Risk Model
+```mermaid
+flowchart LR
+    Chain["Existing chain graph"] --> Features["Feature builder<br/>node type, coordinates, industry"]
+    Features --> ML["TensorFlow.js inference"]
+    Chain --> LLM["LLM risk assessment<br/>playbook grounded"]
+    ML --> Blend["Weighted blend<br/>40% ML + 60% LLM"]
+    LLM --> Blend
+    Blend --> Report["Risk report<br/>geopolitical, climate, cyber, transport"]
+    Report --> UI["Flutter risk dashboard"]
 
-Our custom **TensorFlow.js** neural network provides highly accurate predictive risk scoring:
-- **Architecture:** 3-layer neural network with ReLU activation and dropout regularization.
-- **Features:** Analyzes node type, geographic coordinates, and industry category.
-- **Output:** Outputs precise scores for Geopolitical, Climate, Cyber, and Transport risks.
-- **Hybrid Approach:** ML predictions are fused with LLM assessments for a robust final risk report.
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js (v18+) and npm
-- Flutter SDK (v3.5.0+)
-- Docker Desktop (Optional, for full containerized backend)
-
-### 1. Environment Configuration
-Create a `.env` file in the `backend/functions` directory:
-```env
-GOOGLE_GENAI_API_KEY="your_gemini_api_key_here"
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_API_KEY="your_langsmith_api_key"
-LANGCHAIN_PROJECT="Resilia"
+    classDef source fill:#e7f2ff,stroke:#2f80ed,color:#162033
+    classDef model fill:#fff3df,stroke:#d99028,color:#162033
+    classDef output fill:#e8f7ef,stroke:#2f8f62,color:#162033
+    class Chain,Features source
+    class ML,LLM,Blend model
+    class Report,UI output
 ```
 
-### 2. Run Backend
-Install dependencies and train the model:
-```bash
-cd backend/functions
-npm install
-npm run train-model
-npm run dev
+</details>
+
+<details>
+<summary><strong>Workflow 3: Self-heal a disruption</strong></summary>
+
+```mermaid
+stateDiagram-v2
+    [*] --> Monitoring
+    Monitoring --> DisruptionDetected: signal crosses threshold
+    DisruptionDetected --> ImpactAnalysis: identify blocked nodes and lanes
+    ImpactAnalysis --> MitigationPlanning: query playbook and risk model
+    MitigationPlanning --> HumanReview: propose alternate routing
+    HumanReview --> ApplyPlan: approve
+    HumanReview --> MitigationPlanning: refine
+    ApplyPlan --> FirestoreSync: update graph metadata
+    FirestoreSync --> Monitoring
 ```
 
-### 3. Run Frontend
-Launch the Flutter application pointing to your local API:
-```bash
-cd flutter_app
-flutter clean
-flutter pub get
-flutter run -d chrome
+</details>
+
+<details>
+<summary><strong>Workflow 4: Keep every client synchronized</strong></summary>
+
+```mermaid
+sequenceDiagram
+    participant A as AI/API
+    participant F as Firestore
+    participant C1 as Client A
+    participant C2 as Client B
+    participant C3 as Client C
+
+    A->>F: Write chain, risk, or mitigation update
+    par Snapshot listeners
+        F-->>C1: Updated graph document
+        F-->>C2: Updated graph document
+        F-->>C3: Updated graph document
+    end
+    C1->>C1: Repaint map and charts
+    C2->>C2: Repaint map and charts
+    C3->>C3: Repaint map and charts
 ```
 
-## 🌍 Production Deployment
+</details>
 
-### Frontend (AWS Amplify)
-The Flutter app is seamlessly deployed via **AWS Amplify**. A pre-configured `amplify.yml` exists at the root. Simply connect the repository in the AWS Console, and Amplify handles CI/CD globally via Amazon CloudFront.
+## Agentic ML Pipeline
 
-### Backend (GCP Cloud Run / AWS ECS)
-The backend is containerized for portability. 
-1. Build the Docker image.
-2. Push to Google Artifact Registry or Amazon ECR.
-3. Deploy to **Google Cloud Run** or **AWS Fargate** for serverless, autoscaling AI execution.
+```mermaid
+flowchart LR
+    Start(("User request")) --> A1["Agent 1<br/>Business Analyzer"]
+    A1 --> A15["Agent 1.5<br/>Risk Anticipator"]
+    A15 --> A2["Agent 2<br/>Chain Architect"]
+    A2 --> A25["Agent 2.5<br/>ML Risk Scorer"]
+    A25 --> A3["Agent 3<br/>UI Config Generator"]
+    A3 --> A4["Agent 4<br/>Assembler"]
+    A4 --> End(("Supply chain model"))
 
-## 📜 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+    classDef start fill:#e7f2ff,stroke:#2f80ed,color:#162033,stroke-width:2px
+    classDef agent fill:#fff3df,stroke:#d99028,color:#162033,stroke-width:2px
+    classDef output fill:#e8f7ef,stroke:#2f8f62,color:#162033,stroke-width:2px
 
-<div align="center">
-  <i>Built with ❤️ by an AI enthusiast.</i>
-</div>
+    class Start start
+    class A1,A15,A2,A25,A3,A4 agent
+    class End output
+```
+
+| Agent | Purpose | Output |
+|---|---|---|
+| Agent 1: Business Analyzer | Converts the business idea into logistical components | Requirements, assumptions, operational scope |
+| Agent 1.5: Risk Anticipator | Applies the disruption playbook before graph design | Macro-risk context and constraints |
+| Agent 2: Chain Architect | Designs real-world nodes, routes, and coordinates | Supply chain graph draft |
+| Agent 2.5: ML Risk Scorer | Runs TensorFlow.js inference on every node | Predictive risk scores |
+| Agent 3: UI Config Generator | Builds dynamic node-page configuration | Dashboard-ready component metadata |
+| Agent 4: Assembler | Merges all agent outputs into one model | Final enriched supply chain graph |
+
+## Risk Intelligence Engine
+
+```mermaid
+flowchart TD
+    subgraph Features["Input features"]
+        NodeType["Node type<br/>15 one-hot values"]
+        Geo["Latitude / longitude<br/>2 normalized values"]
+        Industry["Industry category<br/>13 one-hot values"]
+    end
+
+    subgraph Network["TensorFlow.js neural network"]
+        H1["Hidden layer 1<br/>64 units + ReLU"]
+        H2["Hidden layer 2<br/>32 units + ReLU"]
+        Dropout["Dropout regularization"]
+    end
+
+    subgraph Predictions["Risk predictions"]
+        GeoRisk["Geopolitical"]
+        ClimateRisk["Climate"]
+        CyberRisk["Cyber"]
+        TransportRisk["Transport"]
+    end
+
+    LLM["LLM assessment<br/>playbook grounded"]
+    Final["Final report<br/>40% ML + 60% LLM"]
+
+    NodeType --> H1
+    Geo --> H1
+    Industry --> H1
+    H1 --> Dropout --> H2
+    H2 --> GeoRisk
+    H2 --> ClimateRisk
+    H2 --> CyberRisk
+    H2 --> TransportRisk
+    GeoRisk --> Final
+    ClimateRisk --> Final
+    CyberRisk --> Final
+    TransportRisk --> Final
+    LLM --> Final
+
+    classDef input fill:#e7f2ff,stroke:#2f80ed,color:#162033
+    classDef model fill:#f0eaff,stroke:#7a4ed9,color:#162033
+    classDef risk fill:#fff3df,stroke:#d99028,color:#162033
+    classDef final fill:#e8f7ef,stroke:#2f8f62,color:#162033,stroke-width:2px
+
+    class NodeType,Geo,Industry input
+    class H1,H2,Dropout,LLM model
+    class GeoRisk,ClimateRisk,CyberRisk,TransportRisk risk
+    class Final final
+```
+
+The model is a 30 -> 64 -> 32 -> 4 neural network trained on 600+ synthetic samples derived from supply chain disruption knowledge. It scores four risk categories, then blends those scores with LLM assessment so the final report is both pattern-aware and context-aware.
+
+## Realtime Collaboration Loop
+
+```mermaid
+flowchart LR
+    Detect["Detect signal<br/>risk, delay, disruption"] --> Decide["Decide response<br/>agent workflow"]
+    Decide --> Update["Update graph<br/>nodes, edges, metadata"]
+    Update --> Sync["Sync clients<br/>Firestore snapshots"]
+    Sync --> Observe["Observe outcomes<br/>dashboard + traces"]
+    Observe --> Detect
+
+    classDef loop fill:#e8f7ef,stroke:#2f8f62,color:#162033,stroke-width:2px
+    class Detect,Decide,Update,Sync,Observe loop
+```
+
+## Tech Stack
+
+| Area | Tools |
+|---|---|
+| Frontend | Flutter 3.5.0+, Provider |
+| Realtime data | Firebase Firestore streams, Server-Sent Events |
+| Maps and GIS | `flutter_map`, `latlong2`, `geolocator`, `geocoding` |
+| Charts and UI motion | `fl_chart`, `shimmer`, `flutter_staggered_animations` |
+| Backend | Node.js, TypeScript, Express.js |
+| AI orchestration | LangGraph, LangChain |
+| ML inference | TensorFlow.js |
+| Knowledge base | Disruption playbook with 10 sections and 40+ risk types |
+| Observability | LangSmith, Winston, Morgan |
+| Database | Cloud Firestore |
+
+## API Surface
+
+| Endpoint | Purpose | Realtime behavior |
+|---|---|---|
+| `POST /api/generate-stream` | Generates a supply chain from a business prompt | Streams LangGraph progress via SSE |
+| `POST /api/chains/:id/risk-scan` | Evaluates geopolitical, climate, cyber, and transport risk | Persists updated risk metadata to Firestore |
+| `POST /api/chains/:id/disruptions/resolve` | Proposes mitigation plans and alternate routing | Updates the live chain graph after approval |
+
+## Data Model
+
+```mermaid
+erDiagram
+    SUPPLY_CHAIN ||--o{ NODE : contains
+    SUPPLY_CHAIN ||--o{ EDGE : connects
+    NODE ||--o{ RISK_SCORE : receives
+    NODE ||--o{ UI_COMPONENT : renders
+    SUPPLY_CHAIN ||--o{ DISRUPTION : tracks
+    DISRUPTION ||--o{ MITIGATION_PLAN : resolves
+
+    SUPPLY_CHAIN {
+        string id
+        string name
+        string industry
+        datetime updatedAt
+    }
+
+    NODE {
+        string id
+        string type
+        float latitude
+        float longitude
+        string status
+    }
+
+    EDGE {
+        string id
+        string sourceNodeId
+        string targetNodeId
+        string routeMode
+    }
+
+    RISK_SCORE {
+        float geopolitical
+        float climate
+        float cyber
+        float transport
+    }
+
+    DISRUPTION {
+        string id
+        string severity
+        string affectedNodeId
+        string status
+    }
+
+    MITIGATION_PLAN {
+        string id
+        string strategy
+        string confidence
+        string approvalStatus
+    }
+```
+
+## Suggested Project Structure
+
+```text
+resilia/
+  app/
+    lib/
+      features/
+      maps/
+      dashboards/
+  api/
+    src/
+      routes/
+      workflows/
+      agents/
+      risk/
+  shared/
+    schemas/
+    playbooks/
+  docs/
+    diagrams/
+```
+
+## Why This Architecture Works
+
+- Streaming keeps users inside the generation process instead of waiting on a black-box AI response.
+- Firestore snapshots make generated chains collaborative across every connected client.
+- The ML model provides fast, repeatable node-level risk estimates.
+- The LLM agents add context, mitigation reasoning, and playbook-grounded tradeoff analysis.
+- The architecture separates mobile UI, orchestration, intelligence, and persistence so each layer can evolve independently.
