@@ -7,7 +7,7 @@
 
 Resilia is an AI-powered dynamic supply chain platform for mapping, analyzing, and self-healing complex logistics networks. It combines a Flutter client, Firestore realtime synchronization, LangGraph multi-agent orchestration, and a TensorFlow.js risk model to turn a business brief into an inspectable supply chain graph with predictive disruption intelligence.
 
-![Animated adaptive flow](assets/resilia-flow.svg)
+![Animated adaptive flow](resilia-flow.svg)
 
 ## Explore
 
