@@ -1,0 +1,211 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Resilia adaptive supply chain flow</title>
+  <desc id="desc">Animated flow from demand intake through AI agents, risk scoring, mitigation planning, Firestore sync, and the Flutter dashboard.</desc>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    svg {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: transparent;
+    }
+
+    .rail {
+      fill: none;
+      stroke: #93a4b7;
+      stroke-width: 5;
+      stroke-linecap: round;
+      opacity: .35;
+    }
+
+    .pulse {
+      fill: none;
+      stroke: #2f80ed;
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-dasharray: 26 450;
+      animation: flow 3.8s linear infinite;
+    }
+
+    .node {
+      fill: #f8fbff;
+      stroke: #53677f;
+      stroke-width: 2;
+      filter: drop-shadow(0 10px 18px rgba(39, 54, 74, .12));
+    }
+
+    .node-accent {
+      fill: #e9f2ff;
+      stroke: #2f80ed;
+    }
+
+    .node-risk {
+      fill: #fff7e8;
+      stroke: #d99028;
+    }
+
+    .node-sync {
+      fill: #ecf8f2;
+      stroke: #2f8f62;
+    }
+
+    .label {
+      fill: #172033;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      fill: #526172;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .badge {
+      fill: #ffffff;
+      stroke: #d7e1ee;
+      stroke-width: 1.5;
+    }
+
+    .badge-text {
+      fill: #405064;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .4px;
+    }
+
+    .spark {
+      fill: #2f80ed;
+      opacity: .15;
+      animation: breathe 2.6s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .spark:nth-of-type(2n) {
+      animation-delay: .45s;
+    }
+
+    .spark:nth-of-type(3n) {
+      animation-delay: .9s;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .node {
+        fill: #111a26;
+        stroke: #657993;
+      }
+
+      .node-accent {
+        fill: #10253e;
+        stroke: #6eaeff;
+      }
+
+      .node-risk {
+        fill: #2b2112;
+        stroke: #f0ba62;
+      }
+
+      .node-sync {
+        fill: #10251d;
+        stroke: #69c894;
+      }
+
+      .label {
+        fill: #eef5ff;
+      }
+
+      .sub {
+        fill: #b8c4d3;
+      }
+
+      .badge {
+        fill: #172233;
+        stroke: #31435a;
+      }
+
+      .badge-text {
+        fill: #c5d1df;
+      }
+
+      .rail {
+        stroke: #657993;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .pulse,
+      .spark {
+        animation: none;
+      }
+    }
+
+    @keyframes flow {
+      from {
+        stroke-dashoffset: 0;
+      }
+      to {
+        stroke-dashoffset: -476;
+      }
+    }
+
+    @keyframes breathe {
+      0%,
+      100% {
+        transform: scale(.82);
+        opacity: .10;
+      }
+      50% {
+        transform: scale(1.2);
+        opacity: .24;
+      }
+    }
+  </style>
+
+  <path class="rail" d="M140 180 C250 80 350 80 460 180 S670 280 780 180 S990 80 1100 180"/>
+  <path class="pulse" d="M140 180 C250 80 350 80 460 180 S670 280 780 180 S990 80 1100 180"/>
+
+  <circle class="spark" cx="158" cy="164" r="34"/>
+  <circle class="spark" cx="458" cy="180" r="34"/>
+  <circle class="spark" cx="760" cy="194" r="34"/>
+  <circle class="spark" cx="1044" cy="136" r="34"/>
+
+  <g transform="translate(52 92)">
+    <rect class="node node-accent" width="210" height="142" rx="18"/>
+    <rect class="badge" x="24" y="20" width="86" height="28" rx="14"/>
+    <text class="badge-text" x="67" y="39" text-anchor="middle">INTAKE</text>
+    <text class="label" x="24" y="76">Business brief</text>
+    <text class="sub" x="24" y="106">Demand, product, lanes,</text>
+    <text class="sub" x="24" y="128">constraints, geography</text>
+  </g>
+
+  <g transform="translate(337 52)">
+    <rect class="node" width="250" height="174" rx="18"/>
+    <rect class="badge" x="24" y="22" width="94" height="28" rx="14"/>
+    <text class="badge-text" x="71" y="41" text-anchor="middle">LANGGRAPH</text>
+    <text class="label" x="24" y="80">Agent workflow</text>
+    <text class="sub" x="24" y="112">Analyze, anticipate,</text>
+    <text class="sub" x="24" y="134">architect, assemble</text>
+    <text class="sub" x="24" y="156">with streamed states</text>
+  </g>
+
+  <g transform="translate(637 134)">
+    <rect class="node node-risk" width="242" height="154" rx="18"/>
+    <rect class="badge" x="24" y="22" width="98" height="28" rx="14"/>
+    <text class="badge-text" x="73" y="41" text-anchor="middle">RISK MODEL</text>
+    <text class="label" x="24" y="80">ML + LLM score</text>
+    <text class="sub" x="24" y="112">Geopolitical, climate,</text>
+    <text class="sub" x="24" y="134">cyber, transport risk</text>
+  </g>
+
+  <g transform="translate(938 66)">
+    <rect class="node node-sync" width="214" height="164" rx="18"/>
+    <rect class="badge" x="24" y="22" width="92" height="28" rx="14"/>
+    <text class="badge-text" x="70" y="41" text-anchor="middle">SYNC</text>
+    <text class="label" x="24" y="80">Live dashboard</text>
+    <text class="sub" x="24" y="112">Firestore updates, SSE</text>
+    <text class="sub" x="24" y="134">agent thoughts, maps</text>
+  </g>
+</svg>
