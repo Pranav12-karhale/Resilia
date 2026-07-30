@@ -13,7 +13,7 @@ class ApiService {
       return 'https://adaptive-supply-chain-backend.onrender.com/api';
     }
     if (kIsWeb) {
-      return 'http://localhost:3001/api';
+      return 'https://adaptive-supply-chain-backend-t58p.onrender.com/api';
     }
     return 'http://10.0.2.2:3001/api';
   }
