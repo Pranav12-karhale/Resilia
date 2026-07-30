@@ -1,5 +1,3 @@
-# Adaptive Supply Chain Platform (Resilia)
-
 An AI-powered dynamic supply chain management application designed to map out, analyze, and self-heal complex global and domestic logistics networks. It leverages **LangGraph** and **LangChain** for multi-agent orchestration, a **TensorFlow.js ML Risk Model** trained on supply chain domain knowledge for predictive risk scoring, and provides **Real-Time** dashboard synchronization across all connected clients.
 
 ---
