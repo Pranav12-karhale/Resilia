@@ -11,3 +11,11 @@ services:
         sync: false # User needs to paste this in Render dashboard
       - key: FIREBASE_PROJECT_ID
         sync: false # User needs to paste this in Render dashboard
+
+  - type: web
+    name: adaptive-supply-chain-frontend
+    plan: free
+    env: docker
+    rootDir: flutter_app
+    dockerfilePath: Dockerfile
+

@@ -1,0 +1,12 @@
+.dart_tool/
+.pub-cache/
+build/
+android/
+ios/
+windows/
+linux/
+macos/
+.git/
+.agents/
+.claude/
+.junie/
