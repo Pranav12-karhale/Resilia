@@ -1,5 +1,5 @@
 # Stage 1: Build Flutter Web
-FROM ghcr.io/cirrusci/flutter:3.24.0 AS builder
+FROM mobiledevops/flutter-sdk:3.24.0 AS builder
 
 WORKDIR /app
 
