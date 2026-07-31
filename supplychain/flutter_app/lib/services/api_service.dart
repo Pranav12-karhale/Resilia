@@ -10,7 +10,7 @@ class ApiService {
   static String get baseUrl {
     if (kReleaseMode) {
       // Production backend URL (Render)
-      return 'https://adaptive-supply-chain-backend.onrender.com/api';
+      return 'https://adaptive-supply-chain-backend-t58p.onrender.com/api';
     }
     if (kIsWeb) {
       return 'https://adaptive-supply-chain-backend-t58p.onrender.com/api';
