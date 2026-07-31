@@ -1,14 +1,22 @@
 # Stage 1: Build Flutter Web
-FROM mobiledevops/flutter-sdk:3.24.0 AS builder
+FROM ubuntu:22.04 AS builder
+
+# Install dependencies for Flutter
+RUN apt-get update && \
+    apt-get install -y curl git unzip xz-utils zip libglu1-mesa
+
+# Download and install Flutter (stable channel)
+RUN git clone https://github.com/flutter/flutter.git -b stable /usr/local/flutter
+ENV PATH="/usr/local/flutter/bin:/usr/local/flutter/bin/cache/dart-sdk/bin:${PATH}"
+
+# Enable web support (just in case)
+RUN flutter config --enable-web
 
 WORKDIR /app
 
-# Copy dependency files and install
-COPY pubspec.yaml pubspec.lock ./
-RUN flutter pub get
-
-# Copy source files and build web app
+# Copy files and build
 COPY . .
+RUN flutter pub get
 RUN flutter build web --release
 
 # Stage 2: Serve Web App using Lightweight Nginx
