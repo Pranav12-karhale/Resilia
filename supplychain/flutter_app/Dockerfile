@@ -5,19 +5,26 @@ FROM ubuntu:22.04 AS builder
 RUN apt-get update && \
     apt-get install -y curl git unzip xz-utils zip libglu1-mesa
 
-# Download and install Flutter (stable channel)
-RUN git clone https://github.com/flutter/flutter.git -b stable /usr/local/flutter
-ENV PATH="/usr/local/flutter/bin:/usr/local/flutter/bin/cache/dart-sdk/bin:${PATH}"
+# Create a non-root user
+RUN useradd -ms /bin/bash flutteruser
+USER flutteruser
+WORKDIR /home/flutteruser
 
-# Enable web support (just in case)
+# Download and install Flutter (stable channel)
+RUN git clone https://github.com/flutter/flutter.git -b stable flutter
+ENV PATH="/home/flutteruser/flutter/bin:/home/flutteruser/flutter/bin/cache/dart-sdk/bin:${PATH}"
+
+# Enable web support
 RUN flutter config --enable-web
 
 WORKDIR /app
 
-# Copy files and build
-COPY . .
+# Copy files with correct ownership
+COPY --chown=flutteruser:flutteruser . .
+
 RUN flutter pub get
 RUN flutter build web --release
+
 
 # Stage 2: Serve Web App using Lightweight Nginx
 FROM nginx:alpine
