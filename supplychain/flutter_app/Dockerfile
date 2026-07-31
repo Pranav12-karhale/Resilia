@@ -3,40 +3,44 @@ FROM ubuntu:22.04 AS builder
 
 # Install dependencies for Flutter
 RUN apt-get update && \
-    apt-get install -y curl git unzip xz-utils zip libglu1-mesa
+    apt-get install -y curl git unzip xz-utils zip libglu1-mesa && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user
-RUN useradd -ms /bin/bash flutteruser
+# Create a non-root user with a home directory and app directory
+RUN useradd -ms /bin/bash flutteruser && \
+    mkdir -p /home/flutteruser/app && \
+    chown -R flutteruser:flutteruser /home/flutteruser
+
 USER flutteruser
 WORKDIR /home/flutteruser
 
 # Download and install Flutter (stable channel)
-RUN git clone https://github.com/flutter/flutter.git -b stable flutter
+RUN git clone https://github.com/flutter/flutter.git -b stable --depth 1 flutter
 ENV PATH="/home/flutteruser/flutter/bin:/home/flutteruser/flutter/bin/cache/dart-sdk/bin:${PATH}"
 
-# Enable web support
+# Pre-cache Flutter web SDK to speed up builds
+RUN flutter precache --web
 RUN flutter config --enable-web
 
-WORKDIR /app
+WORKDIR /home/flutteruser/app
 
-# Copy files with correct ownership
+# Copy pubspec files first for better Docker layer caching
+COPY --chown=flutteruser:flutteruser pubspec.yaml pubspec.lock ./
+RUN flutter pub get
+
+# Copy the rest of the source code
 COPY --chown=flutteruser:flutteruser . .
 
-RUN flutter pub get
+# Build the web release
 RUN flutter build web --release
 
-
-# Stage 2: Serve Web App using Lightweight Nginx
+# Stage 2: Serve with lightweight Nginx
 FROM nginx:alpine
 
-# Default PORT environment variable
 ENV PORT=80
 
-# Copy Nginx configuration template (Nginx automatically populates $PORT via envsubst)
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
-
-# Copy built static files from builder stage
-COPY --from=builder /app/build/web /usr/share/nginx/html
+COPY --from=builder /home/flutteruser/app/build/web /usr/share/nginx/html
 
 EXPOSE 80
 
